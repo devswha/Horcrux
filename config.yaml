@@ -1,0 +1,90 @@
+# LifeBot 설정 파일
+
+# 건강 목표치
+health_targets:
+  sleep_hours: 7
+  workout_minutes: 30
+  protein_grams: 100
+
+# 알림 임계값
+alerts:
+  sleep_warning: 6
+  consecutive_days_check: 3
+
+# 경험치 규칙
+exp_rules:
+  task_complete: 20
+  task_priority_multiplier:
+    low: 0.5
+    normal: 1.0
+    high: 1.5
+    urgent: 2.5
+  sleep_goal: 15
+  workout_base: 10
+  protein_goal: 10
+  habit_streak: 5
+  study_per_hour: 30
+  consecutive_bonus: 100  # 7일 연속 기록
+
+# 레벨 공식: 100 * N * (N - 1) / 2
+level_exp_formula: "quadratic"
+
+# LLM 설정 (Phase 3)
+llm:
+  # 사용할 LLM 제공자 (claude, openai, ollama)
+  provider: "ollama"  # 로컬 무료 LLM
+  enabled: true  # Ollama 활성화
+
+  # 사용 전략
+  strategy: "fallback"  # fallback: 정규식 실패 시에만, always: 항상 사용, never: 사용 안 함
+
+  # Claude 설정
+  claude:
+    model: "claude-3-5-sonnet-20241022"
+    api_key_env: "ANTHROPIC_API_KEY"
+    max_tokens: 1000
+    temperature: 0.7
+
+  # OpenAI 설정
+  openai:
+    model: "gpt-4o-mini"
+    api_key_env: "OPENAI_API_KEY"
+    max_tokens: 1000
+    temperature: 0.7
+
+  # Ollama 설정 (로컬 무료 LLM)
+  ollama:
+    host: "http://localhost:11434"
+    model: "llama3.2:3b"  # 경량 3B 모델
+    max_tokens: 1000
+    temperature: 0.7
+
+  # 시스템 프롬프트
+  system_prompt: |
+    당신은 LifeBot의 대화형 헬스케어 어시스턴트입니다.
+    사용자의 건강 데이터(수면, 운동, 영양)와 할일을 추적하고 동기부여를 제공합니다.
+    친근하고 격려하는 톤으로 대화하며, 한국어로 응답합니다.
+
+# 업적 설정 (Phase 3)
+achievements:
+  check_interval: "real-time"  # 업적 체크 빈도 (real-time, daily)
+  notify_progress: true        # 진행도 90% 이상일 때 알림
+  show_locked: true            # 잠긴 업적 표시 여부
+
+# 웹 UI 설정
+web_ui:
+  chart_days: 7         # 차트에 표시할 일수
+  max_chat_history: 50  # 최대 채팅 히스토리
+  theme: "light"        # light, dark
+
+# DB 설정
+database:
+  path: "lifebot.db"
+  backup_enabled: false
+  backup_interval_days: 7
+
+# 로깅
+logging:
+  level: "INFO"         # DEBUG, INFO, WARNING, ERROR
+  file: "lifebot.log"
+  console: true

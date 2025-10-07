@@ -66,7 +66,8 @@ class LangChainLLM:
 - weight: 체중
 - task_add: 할일 추가
 - task_complete: 할일 완료
-- study: 공부/학습
+- study: 공부/학습 (시간 기록)
+- learning_log: 학습 기록 (새로운 지식/스킬 습득)
 - summary: 요약
 - progress: 진행도
 - chat: 일반 대화
@@ -79,9 +80,23 @@ class LangChainLLM:
     {{"intent": "sleep", "entities": {{"sleep_hours": 7, "date": "어제"}}, "confidence": 0.95}},
     {{"intent": "workout", "entities": {{"workout_minutes": 30, "date": "어제"}}, "confidence": 0.95}}
   ]
+- "프롬포트 템플릿과 chrome mcp에 대해 알게됐어" → {{"intent": "learning_log", "entities": {{"title": "프롬포트 템플릿과 chrome mcp", "content": "프롬포트 템플릿과 chrome mcp에 대해 학습함"}}, "confidence": 0.95}}
+- "내일 일본여행갈때 짐 챙겨야해" → {{"intent": "task_add", "entities": {{"task_title": "짐 챙기기", "due": "내일"}}, "confidence": 0.95}}
 
 복잡한 수면 패턴도 계산해주세요:
-- "11시에 잤다가 3시에 일어나서 다시 8시에 잤다가 14시에 일어났어" → 총 10시간 수면"""
+- "11시에 잤다가 3시에 일어나서 다시 8시에 잤다가 14시에 일어났어" → 총 10시간 수면
+
+학습 기록 (learning_log)은 '알게됐어', '배웠어', '깨달았어', '기억해둬' 등의 표현이 있을 때 사용하세요.
+
+**중요: entities 키 이름 규칙**
+- task_add: "task_title" (할일 제목)
+- task_complete: "task_id" (할일 ID)
+- sleep: "sleep_hours" (수면 시간)
+- workout: "workout_minutes" (운동 시간, 분 단위)
+- protein: "protein_grams" (단백질, 그램)
+- weight: "weight_kg" (체중, kg)
+- study: "study_hours" 또는 "study_minutes" (공부 시간)
+- learning_log: "title" (학습 내용 제목), "content" (상세 내용)"""
 
         user_prompt = f"""사용자 입력: "{user_input}"
 
@@ -89,26 +104,30 @@ class LangChainLLM:
 복합 명령이면 배열, 단일 명령이면 객체로 응답하세요."""
 
         try:
+            # JsonOutputParser 설정
+            parser = JsonOutputParser()
+
+            # 프롬프트에 포맷 지시 추가
+            format_instructions = """
+반드시 순수 JSON만 출력하세요. 마크다운이나 다른 텍스트를 포함하지 마세요.
+올바른 형식:
+{"intent": "sleep", "entities": {...}, "confidence": 0.95}
+또는
+[{"intent": "sleep", ...}, {"intent": "workout", ...}]
+"""
+
             # LangChain 메시지 생성
             messages = [
-                SystemMessage(content=system_prompt),
+                SystemMessage(content=system_prompt + "\n" + format_instructions),
                 HumanMessage(content=user_prompt)
             ]
 
             # LLM 호출
             response = self.llm.invoke(messages)
 
-            # JSON 파싱
+            # JsonOutputParser로 자동 파싱
             try:
-                # response.content에서 JSON 추출
-                content = response.content
-                # JSON 부분만 추출 (```json ... ``` 형태 처리)
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0]
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0]
-
-                parsed = json.loads(content.strip())
+                parsed = parser.parse(response.content)
 
                 # 배열인 경우 (복합 명령)
                 if isinstance(parsed, list):

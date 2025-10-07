@@ -115,6 +115,9 @@ class OrchestratorAgent(BaseAgent):
         elif intent == "study":
             return self._handle_study(entities)
 
+        elif intent == "learning_log":
+            return self._handle_learning_log(entities)
+
         elif intent == "summary":
             return self._handle_summary(entities)
 
@@ -419,6 +422,62 @@ class OrchestratorAgent(BaseAgent):
             "success": True,
             "message": "\n".join(message_parts)
         }
+
+    def _handle_learning_log(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """학습 기록 처리 (새로운 지식/스킬 습득)"""
+        title = entities.get("title", "").strip()
+        content = entities.get("content", "").strip()
+        category = entities.get("category")
+        tags = entities.get("tags")
+        date = entities.get("date")
+
+        if not title:
+            return {
+                "success": False,
+                "message": "학습 내용을 알 수 없습니다."
+            }
+
+        try:
+            # 학습 기록 저장
+            log_id = self.data_manager.add_learning_log(
+                title=title,
+                content=content,
+                category=category,
+                tags=tags,
+                date=date
+            )
+
+            # 경험치 부여 (학습 기록 1개당 10 XP)
+            exp_result = self.gamification.award_exp(
+                "learning",
+                1,
+                f"학습: {title}"
+            )
+
+            message_parts = [f"📚 학습 기록 저장: {title}"]
+            if content:
+                message_parts.append(f"   내용: {content[:50]}{'...' if len(content) > 50 else ''}")
+
+            if exp_result and exp_result.get("success"):
+                exp_gained = exp_result.get("exp_gained", 0)
+                message_parts.append(f"  +{exp_gained} XP")
+
+                if exp_result.get("level_up"):
+                    old_level = exp_result.get("new_level", 1) - 1
+                    new_level = exp_result.get("new_level", 1)
+                    message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+
+            return {
+                "success": True,
+                "message": "\n".join(message_parts),
+                "log_id": log_id
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"학습 기록 저장 실패: {e}"
+            }
 
     def _handle_task_add(self, entities: Dict[str, Any]) -> Dict[str, Any]:
         """할일 추가 처리"""

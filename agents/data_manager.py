@@ -389,3 +389,205 @@ class DataManagerAgent(BaseAgent):
             "total_workout": total_workout or 0,
             "completed_tasks": completed_tasks
         }
+
+    # ===== 학습 기록 (Learning Logs) =====
+
+    def add_learning_log(
+        self,
+        title: str,
+        content: str = "",
+        category: str = None,
+        tags: str = None,
+        date: str = None
+    ) -> int:
+        """
+        학습 기록 추가
+
+        Args:
+            title: 학습한 내용 제목 (필수)
+            content: 상세 내용
+            category: 카테고리 (예: "프로그래밍", "언어", "도구")
+            tags: 태그 (쉼표로 구분, 예: "Python,LangChain")
+            date: 날짜 (기본: 오늘)
+
+        Returns:
+            생성된 학습 기록 ID
+        """
+        if not title:
+            raise ValueError("학습 내용 제목은 필수입니다.")
+
+        if date is None:
+            date = datetime.now().strftime("%Y-%m-%d")
+
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO learning_logs (date, title, content, category, tags)
+            VALUES (?, ?, ?, ?, ?)
+        """, (date, title, content, category, tags))
+
+        self.conn.commit()
+        return cursor.lastrowid
+
+    def get_learning_logs(
+        self,
+        date: str = None,
+        category: str = None,
+        limit: int = None,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        학습 기록 조회
+
+        Args:
+            date: 특정 날짜 (None이면 전체)
+            category: 카테고리 필터
+            limit: 최대 개수
+            offset: 시작 위치
+
+        Returns:
+            학습 기록 리스트
+        """
+        cursor = self.conn.cursor()
+
+        query = "SELECT * FROM learning_logs WHERE 1=1"
+        params = []
+
+        if date:
+            query += " AND date = ?"
+            params.append(date)
+
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+
+        query += " ORDER BY date DESC, created_at DESC"
+
+        if limit:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+
+        cursor.execute(query, params)
+
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                "id": row["id"],
+                "date": row["date"],
+                "title": row["title"],
+                "content": row["content"],
+                "category": row["category"],
+                "tags": row["tags"].split(",") if row["tags"] else [],
+                "created_at": row["created_at"]
+            })
+
+        return logs
+
+    def update_learning_log(
+        self,
+        log_id: int,
+        title: str = None,
+        content: str = None,
+        category: str = None,
+        tags: str = None
+    ) -> bool:
+        """
+        학습 기록 수정
+
+        Args:
+            log_id: 학습 기록 ID
+            title: 새 제목
+            content: 새 내용
+            category: 새 카테고리
+            tags: 새 태그
+
+        Returns:
+            성공 여부
+        """
+        cursor = self.conn.cursor()
+
+        updates = []
+        params = []
+
+        if title is not None:
+            updates.append("title = ?")
+            params.append(title)
+
+        if content is not None:
+            updates.append("content = ?")
+            params.append(content)
+
+        if category is not None:
+            updates.append("category = ?")
+            params.append(category)
+
+        if tags is not None:
+            updates.append("tags = ?")
+            params.append(tags)
+
+        if not updates:
+            return False
+
+        params.append(log_id)
+        query = f"UPDATE learning_logs SET {', '.join(updates)} WHERE id = ?"
+
+        cursor.execute(query, params)
+        self.conn.commit()
+
+        return cursor.rowcount > 0
+
+    def delete_learning_log(self, log_id: int) -> bool:
+        """
+        학습 기록 삭제
+
+        Args:
+            log_id: 학습 기록 ID
+
+        Returns:
+            성공 여부
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM learning_logs WHERE id = ?", (log_id,))
+        self.conn.commit()
+
+        return cursor.rowcount > 0
+
+    def get_learning_stats(self, days: int = 30) -> Dict[str, Any]:
+        """
+        학습 통계
+
+        Args:
+            days: 최근 며칠
+
+        Returns:
+            학습 통계 정보
+        """
+        cursor = self.conn.cursor()
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+        # 총 학습 기록 수
+        cursor.execute("""
+            SELECT COUNT(*) as total
+            FROM learning_logs
+            WHERE date >= ?
+        """, (start_date,))
+        total_logs = cursor.fetchone()["total"]
+
+        # 카테고리별 통계
+        cursor.execute("""
+            SELECT category, COUNT(*) as count
+            FROM learning_logs
+            WHERE date >= ? AND category IS NOT NULL
+            GROUP BY category
+            ORDER BY count DESC
+        """, (start_date,))
+        categories = [{"category": row["category"], "count": row["count"]} for row in cursor.fetchall()]
+
+        # 최근 학습 기록
+        recent_logs = self.get_learning_logs(limit=5)
+
+        return {
+            "total_logs": total_logs,
+            "categories": categories,
+            "recent": recent_logs,
+            "period_days": days
+        }

@@ -1,15 +1,17 @@
 """
-대화형 파싱 에이전트
+대화형 파싱 에이전트 (LLM 전용)
 - 한국어 자연어 입력 파싱
 - 의도 파악 (intent classification)
 - 엔티티 추출 (entity extraction)
-- LLM 백업 (Phase 3)
+- LangChain + GPT-4o-mini 사용
 """
 from typing import Any, Dict, List, Optional
 from agents.base_agent import BaseAgent
-from parsers.korean_patterns import KoreanPatterns
-from parsers.date_parser import DateParser
-from parsers.number_parser import NumberParser
+
+# 정규식 파서 제거 (LLM으로 완전 대체)
+# from parsers.korean_patterns import KoreanPatterns
+# from parsers.date_parser import DateParser
+# from parsers.number_parser import NumberParser
 
 
 class ConversationAgent(BaseAgent):
@@ -17,12 +19,17 @@ class ConversationAgent(BaseAgent):
 
     def __init__(self, llm_client=None):
         super().__init__("Conversation")
-        self.patterns = KoreanPatterns()
-        self.date_parser = DateParser()
-        self.number_parser = NumberParser()
 
-        # LLM 클라이언트 (Phase 3)
+        # 정규식 파서 (더 이상 사용하지 않음 - LLM 전용)
+        # self.patterns = KoreanPatterns()
+        # self.date_parser = DateParser()
+        # self.number_parser = NumberParser()
+
+        # LLM 클라이언트 (필수)
         self.llm = llm_client
+
+        if not self.llm:
+            print("⚠️ LLM 클라이언트가 없습니다. parse_input이 작동하지 않습니다.")
 
         # 대화 히스토리 (간단한 컨텍스트 유지)
         self.history: List[str] = []
@@ -40,7 +47,7 @@ class ConversationAgent(BaseAgent):
 
     def parse_input(self, text: str) -> Dict[str, Any]:
         """
-        사용자 입력 파싱
+        사용자 입력 파싱 (LLM 전용)
 
         Args:
             text: 사용자 입력 텍스트
@@ -50,7 +57,7 @@ class ConversationAgent(BaseAgent):
                 "intent": "sleep"|"workout"|"task_add"등,
                 "entities": {...},
                 "confidence": 0.0~1.0,
-                "original_text": "..."
+                "success": True/False
             }
         """
         if not text or not text.strip():
@@ -64,41 +71,31 @@ class ConversationAgent(BaseAgent):
         if len(self.history) > self.max_history:
             self.history.pop(0)
 
-        # 의도 파악 (정규식)
-        intent = self.patterns.match_intent(text)
+        # LLM으로 직접 파싱 (정규식 제거)
+        if not self.llm:
+            return {
+                "success": False,
+                "error": "LLM이 설정되지 않았습니다."
+            }
 
-        # 의도별 엔티티 추출
-        entities = self._extract_entities(intent, text)
+        print(f"🤖 LLM 파싱: {text}")
+        llm_result = self._parse_with_llm(text)
 
-        # 신뢰도 계산 (간단한 버전)
-        confidence = self._calculate_confidence(intent, entities)
+        if llm_result.get("success"):
+            # 복합 명령인 경우
+            if llm_result.get("multiple"):
+                print(f"✅ 복합 명령: {len(llm_result.get('intents', []))}개 의도")
+            else:
+                print(f"✅ 단일 명령: {llm_result.get('intent')}")
 
-        # LLM 백업 (Phase 3)
-        # 정규식 파싱 실패 시 또는 신뢰도가 낮을 때 LLM 사용
-        if self.llm and (intent == "unknown" or confidence < 0.7):
-            print(f"🤖 LLM 파싱 시작: {text}")  # 디버그 로그
-            llm_result = self._parse_with_llm(text)
+            return llm_result
 
-            if llm_result.get("success"):
-                # 복합 명령인 경우
-                if llm_result.get("multiple"):
-                    print(f"✅ LLM 복합 명령 파싱 성공: {len(llm_result.get('intents', []))}개 의도")
-                    return llm_result
-
-                # 단일 명령이지만 신뢰도가 더 높은 경우
-                if llm_result.get("confidence", 0) > confidence:
-                    print(f"✅ LLM 파싱 성공: {llm_result.get('intent')}")
-                    return llm_result
-
-            print(f"⚠️ LLM 파싱 실패 또는 낮은 신뢰도")  # 디버그 로그
-
+        # LLM 파싱 실패 시
+        print(f"⚠️ LLM 파싱 실패")
         return {
-            "success": True,
-            "intent": intent,
-            "entities": entities,
-            "confidence": confidence,
-            "original_text": text,
-            "parser": "regex"
+            "success": False,
+            "error": "파싱 실패",
+            "original_text": text
         }
 
     def _extract_entities(self, intent: str, text: str) -> Dict[str, Any]:

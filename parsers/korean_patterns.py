@@ -16,6 +16,9 @@ class KoreanPatterns:
             re.compile(r'(잤|수면|자)\s*(\d+\.?\d*)\s*시간'),
             re.compile(r'수면\s*시간'),
             re.compile(r'못\s*잤|안\s*잤'),
+            re.compile(r'잤다가.*일어나'),  # "잤다가...일어났어" 패턴
+            re.compile(r'(\d+)시.*잤|자'),    # "11시에 잤어" 패턴
+            re.compile(r'잤|잤어|잤다'),       # 단순 수면 언급
         ]
 
         # 운동 패턴
@@ -82,6 +85,24 @@ class KoreanPatterns:
             re.compile(r'(습관|habit)\s*(.+?)\s*(추가|만들|생성)'),
         ]
 
+        # 공부/학습 패턴
+        self.study_patterns: List[Pattern] = [
+            re.compile(r'(\d+\.?\d*)\s*시간\s*(공부|학습|공부중|study)'),
+            re.compile(r'(\d+)\s*분\s*(공부|학습|study)'),
+            re.compile(r'(공부|학습|study)\s*(\d+\.?\d*)\s*시간'),
+            re.compile(r'(공부|학습)\s*중'),
+            re.compile(r'공부\s*하'),
+        ]
+
+        # 학습 기록 패턴 (새로운 지식/스킬 습득)
+        self.learning_log_patterns: List[Pattern] = [
+            re.compile(r'(.+?)\s*(알게\s*됐|알았|배웠|배웠어|깨달았|이해했|습득했|익혔)'),
+            re.compile(r'(.+?)\s*(에\s*대해|에\s*관해)\s*(알게\s*됐|배웠|깨달았|이해했)'),
+            re.compile(r'(.+?)\s*기억\s*해\s*둬'),
+            re.compile(r'(.+?)\s*노트'),
+            re.compile(r'(.+?)\s*메모'),
+        ]
+
     def match_intent(self, text: str) -> str:
         """
         입력 텍스트에서 의도(intent) 파악
@@ -128,11 +149,19 @@ class KoreanPatterns:
         if self._matches_any(text, self.task_add_patterns):
             return "task_add"
 
-        # 6. 습관 생성
+        # 6. 학습 기록 (지식/스킬 습득)
+        if self._matches_any(text, self.learning_log_patterns):
+            return "learning_log"
+
+        # 7. 공부/학습 (시간 기록)
+        if self._matches_any(text, self.study_patterns):
+            return "study"
+
+        # 7. 습관 생성
         if self._matches_any(text, self.habit_create_patterns):
             return "habit_create"
 
-        # 7. 습관 기록
+        # 8. 습관 기록
         if self._matches_any(text, self.habit_patterns):
             return "habit_log"
 

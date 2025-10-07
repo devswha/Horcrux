@@ -2,12 +2,25 @@
 """
 LifeBot 웹 대시보드 (Streamlit)
 """
+import os
+import sys
+from pathlib import Path
+
+# 상위 디렉토리를 path에 추가 (import 경로 해결)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from dotenv import load_dotenv
+
+# .env 파일 자동 로드
+load_dotenv()
+
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from datetime import datetime, timedelta
 from core.database import Database
+from core.llm_client import LLMClientFactory
 from agents.conversation import ConversationAgent
 from agents.data_manager import DataManagerAgent
 from agents.gamification import GamificationAgent
@@ -29,12 +42,24 @@ if 'db' not in st.session_state:
     st.session_state.db.connect()
 
 if 'orchestrator' not in st.session_state:
-    conversation = ConversationAgent()
+    # LLM 클라이언트 초기화
+    try:
+        llm_client = LLMClientFactory.create()
+        if llm_client:
+            st.session_state.llm_status = "✅ LLM 활성화"
+        else:
+            st.session_state.llm_status = "⚠️ LLM 비활성화"
+    except Exception as e:
+        llm_client = None
+        st.session_state.llm_status = f"⚠️ LLM 오류: {str(e)}"
+
+    # 에이전트 초기화 (LLM 클라이언트 전달)
+    conversation = ConversationAgent(llm_client=llm_client)
     data_manager = DataManagerAgent(st.session_state.db.conn)
     gamification = GamificationAgent(st.session_state.db.conn)
     coaching = CoachingAgent(st.session_state.db.conn)
     st.session_state.orchestrator = OrchestratorAgent(
-        conversation, data_manager, gamification, coaching
+        conversation, data_manager, gamification, coaching, llm_client=llm_client
     )
     st.session_state.data_manager = data_manager
     st.session_state.gamification = gamification
@@ -61,6 +86,10 @@ with st.sidebar:
     st.metric("업적", progress['achievements'])
 
     st.markdown("---")
+
+    # LLM 상태 표시
+    if 'llm_status' in st.session_state:
+        st.caption(st.session_state.llm_status)
 
     # 메뉴
     menu = st.radio(
@@ -105,25 +134,6 @@ if menu == "💬 채팅":
         })
 
         st.rerun()
-
-    # 예시 버튼들
-    st.markdown("---")
-    st.subheader("빠른 입력")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        if st.button("💤 수면 기록"):
-            st.session_state.quick_input = "7시간 잤어"
-    with col2:
-        if st.button("💪 운동 기록"):
-            st.session_state.quick_input = "30분 운동했어"
-    with col3:
-        if st.button("📝 할일 추가"):
-            st.session_state.quick_input = "새 할일"
-    with col4:
-        if st.button("📊 오늘 요약"):
-            st.session_state.quick_input = "오늘 요약"
 
 
 elif menu == "📊 대시보드":

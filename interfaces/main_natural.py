@@ -3,7 +3,18 @@
 LifeBot - 건강/할일 관리 에이전트 시스템 (자연어 버전)
 Phase 2: 한국어 자연어 처리 지원
 """
+import os
 import sys
+from pathlib import Path
+
+# 상위 디렉토리를 path에 추가 (import 경로 해결)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from dotenv import load_dotenv
+
+# .env 파일 자동 로드
+load_dotenv()
+
 from core.database import Database
 from agents.conversation import ConversationAgent
 from agents.data_manager import DataManagerAgent

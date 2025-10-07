@@ -328,12 +328,10 @@ class CoachingAgent(BaseAgent):
             prompt = self._build_advice_prompt(context)
 
             # LLM 호출
-            advice = self.llm.generate(
-                prompt,
-                system_prompt=self.config.get("llm", {}).get("system_prompt",
-                    "당신은 친절한 헬스케어 코치입니다. 사용자에게 격려와 실용적인 조언을 제공합니다."),
-                temperature=0.8,
-                max_tokens=200
+            advice = self.llm.generate_response(
+                user_input=prompt,
+                context=str(context),
+                tone="encouraging"
             )
 
             return advice.strip()

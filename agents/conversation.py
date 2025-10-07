@@ -76,10 +76,21 @@ class ConversationAgent(BaseAgent):
         # LLM 백업 (Phase 3)
         # 정규식 파싱 실패 시 또는 신뢰도가 낮을 때 LLM 사용
         if self.llm and (intent == "unknown" or confidence < 0.7):
+            print(f"🤖 LLM 파싱 시작: {text}")  # 디버그 로그
             llm_result = self._parse_with_llm(text)
-            if llm_result.get("success") and llm_result.get("confidence", 0) > confidence:
-                # LLM 결과가 더 좋으면 사용
-                return llm_result
+
+            if llm_result.get("success"):
+                # 복합 명령인 경우
+                if llm_result.get("multiple"):
+                    print(f"✅ LLM 복합 명령 파싱 성공: {len(llm_result.get('intents', []))}개 의도")
+                    return llm_result
+
+                # 단일 명령이지만 신뢰도가 더 높은 경우
+                if llm_result.get("confidence", 0) > confidence:
+                    print(f"✅ LLM 파싱 성공: {llm_result.get('intent')}")
+                    return llm_result
+
+            print(f"⚠️ LLM 파싱 실패 또는 낮은 신뢰도")  # 디버그 로그
 
         return {
             "success": True,

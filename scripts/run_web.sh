@@ -6,4 +6,4 @@ echo ""
 echo "브라우저에서 http://localhost:8501 을 여세요"
 echo ""
 
-streamlit run app.py
+streamlit run interfaces/app.py

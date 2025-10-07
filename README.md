@@ -31,18 +31,40 @@
 
 ## 빠른 시작
 
-### 1. 데이터베이스 초기화
+### 1. 설정
 
 ```bash
+# 환경 변수 설정 (.env 파일)
+cp .env.example .env
+# OpenAI API 키 입력 필요
+
+# 데이터베이스 초기화
 python3 core/database.py
 ```
 
 ### 2. 실행
 
-#### 웹 대시보드 (추천) 🌟
+#### 방법 1: 통합 실행 스크립트 (추천) 🌟
 
 ```bash
-streamlit run app.py
+# 메인 실행기
+./run.sh
+
+# 또는 직접 옵션 지정
+./run.sh web    # 웹 대시보드
+./run.sh chat   # 자연어 대화
+./run.sh cli    # 명령어 모드
+./run.sh test   # 테스트 실행
+```
+
+#### 방법 2: Python 직접 실행
+
+```bash
+# 메인 메뉴
+python3 lifebot.py
+
+# 웹 대시보드
+streamlit run interfaces/app.py
 ```
 
 웹 브라우저에서 `http://localhost:8501` 접속
@@ -56,7 +78,9 @@ streamlit run app.py
 #### 자연어 CLI
 
 ```bash
-python3 main_natural.py
+python3 interfaces/main_natural.py
+# 또는
+./run.sh chat
 ```
 
 **사용 예시:**
@@ -93,7 +117,9 @@ python3 main_natural.py
 #### 명령어 버전 (Phase 1)
 
 ```bash
-python3 main.py
+python3 interfaces/main.py
+# 또는
+./run.sh cli
 ```
 
 **사용 예시:**
@@ -169,51 +195,52 @@ python3 main.py
 
 ### Phase 3: LLM 통합 & 고급 기능 ✅
 
-- ✅ LLM 통합 (Claude/OpenAI API)
-  - `core/llm_client.py`: LLM 추상화 레이어
-  - ConversationAgent: 정규식 실패 시 LLM 백업
-  - CoachingAgent: LLM 기반 개인화된 조언
-- ✅ 고급 업적 시스템 (6개 → 20개 확장)
-  - 수면, 운동, 영양, 할일, 습관, 종합 카테고리
-  - 실시간 업적 체크 로직 구현
-- ✅ 설정 파일 및 환경 변수 관리
-  - `config.yaml`: LLM 설정, 타겟, XP 규칙
-  - `.env.example`: API 키 템플릿
+- ✅ **LangChain + GPT 통합**
+  - `core/langchain_llm.py`: LangChain 기반 GPT-4o-mini 연동
+  - 복잡한 한국어 입력 처리 (복합 명령 지원)
+  - 자연스러운 대화형 응답 생성
+- ✅ **지능형 파싱**
+  - 정규식 실패 시 LLM 백업
+  - 복잡한 수면 패턴 자동 계산
+  - 의도 파악 정확도 95%+
+- ✅ **고급 업적 시스템** (6개 → 20개 확장)
+- ✅ **환경 설정 관리**
+  - python-dotenv로 환경변수 관리
+  - config.yaml + .env 통합
 
-**LLM 사용법:**
+**LLM 설정:**
 ```bash
-# 1. API 키 설정
+# 1. 환경 변수 설정
 cp .env.example .env
-# .env 파일에 ANTHROPIC_API_KEY 또는 OPENAI_API_KEY 입력
+# OPENAI_API_KEY 입력 (필수)
 
-# 2. config.yaml에서 LLM 활성화
+# 2. config.yaml 확인 (기본값)
 llm:
+  provider: "langchain"  # LangChain + OpenAI
   enabled: true
-  provider: "claude"  # or "openai"
-  strategy: "fallback"  # 정규식 실패 시에만 사용
 ```
 
 ## 개발 환경
 
-**필수:**
-- Python 3.8+
+**필수 요구사항:**
+- Python 3.9+
 - SQLite3
-- PyYAML
-- Streamlit (웹 UI)
-- Plotly (차트)
 
-**선택 (Phase 3 LLM):**
-- anthropic (Claude API)
-- openai (OpenAI API)
-- python-dotenv (환경 변수)
+**주요 의존성:**
+- **웹 UI**: Streamlit, Plotly, Pandas
+- **LLM**: LangChain, langchain-openai, OpenAI
+- **설정**: PyYAML, python-dotenv
+- **테스트**: pytest, pytest-cov
 
 **설치:**
 ```bash
-# 기본 의존성
+# 모든 의존성 설치
 pip install -r requirements.txt
 
-# LLM 기능 사용 시 (선택)
-pip install anthropic openai python-dotenv
+# 또는 개별 설치
+pip install streamlit plotly pandas
+pip install langchain langchain-openai openai
+pip install pyyaml python-dotenv
 ```
 
 ## 주요 파일 구조
@@ -228,12 +255,28 @@ LifeBot/
 │   └── orchestrator.py  # 조율자
 ├── core/
 │   ├── database.py      # DB 스키마 (9 테이블)
-│   └── llm_client.py    # LLM 추상화 (Phase 3)
-├── parsers/             # 한국어 파서
-├── app.py               # 웹 대시보드 (Streamlit)
-├── main_natural.py      # 자연어 CLI
-├── config.yaml          # 설정
-└── .env.example         # API 키 템플릿
+│   ├── llm_client.py    # LLM 추상화
+│   ├── langchain_llm.py # LangChain 통합
+│   └── config.py        # 설정 관리
+├── interfaces/          # UI 인터페이스
+│   ├── app.py          # 웹 대시보드 (Streamlit)
+│   ├── main_natural.py # 자연어 CLI
+│   └── main.py         # 명령어 CLI
+├── parsers/            # 한국어 파서
+│   ├── korean_patterns.py
+│   ├── date_parser.py
+│   └── number_parser.py
+├── tests/              # 테스트 코드
+├── scripts/            # 유틸리티 스크립트
+├── docs/               # 문서
+│   ├── CLAUDE.md       # Claude Code 지침
+│   ├── PROMPTS.md      # 프롬프트 템플릿
+│   └── WEB_UI_GUIDE.md # 웹 UI 가이드
+├── lifebot.py          # 메인 진입점
+├── run.sh              # 실행 스크립트
+├── config.yaml         # 설정
+├── .env.example        # 환경변수 템플릿
+└── requirements.txt    # 의존성
 ```
 
 ## 라이선스

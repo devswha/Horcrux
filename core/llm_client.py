@@ -86,12 +86,36 @@ class ClaudeLLMClient(LLMClient):
 사용자 입력: "{user_input}"
 
 분석 항목:
-1. intent: 의도 (sleep, workout, protein, task_add, task_complete, habit_check, summary, progress 중 하나)
-2. entities: 추출된 정보 (날짜, 시간, 수량 등)
+1. intent: 의도 (sleep, workout, protein, weight, task_add, task_complete, study, habit_check, summary, progress 중 하나)
+2. entities: 추출된 정보
+   - sleep: sleep_hours (시간 계산 필요 시 자동 계산. 예: "새벽3시부터 12시까지" → 9시간)
+   - workout: workout_minutes (분 단위)
+   - protein: protein_grams (그램)
+   - weight: weight_kg (킬로그램)
+   - task_add: task_title (할일 제목)
+   - task_complete: task_id 또는 task_title
+   - study: study_hours 또는 study_minutes (공부/공부중/학습 등)
+   - date: 날짜 ("어제"면 어제 날짜, "오늘"이면 오늘 날짜)
 3. confidence: 신뢰도 (0.0~1.0)
 
-JSON 형식으로만 응답하세요:
-{{"intent": "...", "entities": {{}}, "confidence": 0.0}}"""
+**중요**:
+- 여러 의도가 포함된 경우 JSON 배열로 반환하세요
+- 단일 의도면 JSON 객체로 반환하세요
+
+단일 의도 예시:
+- "새벽3시부터 12시까지 잤어" → {{"intent": "sleep", "entities": {{"sleep_hours": 9}}, "confidence": 0.95}}
+
+복합 의도 예시:
+- "어제 7시간 자고 30분 운동했어" → [
+    {{"intent": "sleep", "entities": {{"sleep_hours": 7, "date": "어제"}}, "confidence": 0.95}},
+    {{"intent": "workout", "entities": {{"workout_minutes": 30, "date": "어제"}}, "confidence": 0.95}}
+  ]
+- "오늘 약속은 영화보기고, 어제 새벽3시부터 12시까지 잤어" → [
+    {{"intent": "task_add", "entities": {{"task_title": "영화보기"}}, "confidence": 0.9}},
+    {{"intent": "sleep", "entities": {{"sleep_hours": 9, "date": "어제"}}, "confidence": 0.95}}
+  ]
+
+JSON만 응답하세요 (배열 또는 객체):"""
 
         if context:
             prompt += f"\n\n대화 컨텍스트:\n" + "\n".join(context[-3:])
@@ -105,9 +129,28 @@ JSON 형식으로만 응답하세요:
         # JSON 파싱
         import json
         try:
-            result = json.loads(response.strip())
-            result["success"] = True
-            return result
+            parsed = json.loads(response.strip())
+
+            # 배열인 경우 (복합 명령)
+            if isinstance(parsed, list):
+                # 모든 항목에 success 플래그 추가
+                for item in parsed:
+                    item["success"] = True
+                    item["parser"] = "llm"
+
+                return {
+                    "success": True,
+                    "multiple": True,
+                    "intents": parsed,  # 복합 의도들
+                    "parser": "llm"
+                }
+
+            # 객체인 경우 (단일 명령)
+            else:
+                parsed["success"] = True
+                parsed["parser"] = "llm"
+                return parsed
+
         except json.JSONDecodeError:
             return {
                 "success": False,
@@ -178,12 +221,36 @@ class OpenAILLMClient(LLMClient):
 사용자 입력: "{user_input}"
 
 분석 항목:
-1. intent: 의도 (sleep, workout, protein, task_add, task_complete, habit_check, summary, progress 중 하나)
-2. entities: 추출된 정보 (날짜, 시간, 수량 등)
+1. intent: 의도 (sleep, workout, protein, weight, task_add, task_complete, study, habit_check, summary, progress 중 하나)
+2. entities: 추출된 정보
+   - sleep: sleep_hours (시간 계산 필요 시 자동 계산. 예: "새벽3시부터 12시까지" → 9시간)
+   - workout: workout_minutes (분 단위)
+   - protein: protein_grams (그램)
+   - weight: weight_kg (킬로그램)
+   - task_add: task_title (할일 제목)
+   - task_complete: task_id 또는 task_title
+   - study: study_hours 또는 study_minutes (공부/공부중/학습 등)
+   - date: 날짜 ("어제"면 어제 날짜, "오늘"이면 오늘 날짜)
 3. confidence: 신뢰도 (0.0~1.0)
 
-JSON 형식으로만 응답하세요:
-{{"intent": "...", "entities": {{}}, "confidence": 0.0}}"""
+**중요**:
+- 여러 의도가 포함된 경우 JSON 배열로 반환하세요
+- 단일 의도면 JSON 객체로 반환하세요
+
+단일 의도 예시:
+- "새벽3시부터 12시까지 잤어" → {{"intent": "sleep", "entities": {{"sleep_hours": 9}}, "confidence": 0.95}}
+
+복합 의도 예시:
+- "어제 7시간 자고 30분 운동했어" → [
+    {{"intent": "sleep", "entities": {{"sleep_hours": 7, "date": "어제"}}, "confidence": 0.95}},
+    {{"intent": "workout", "entities": {{"workout_minutes": 30, "date": "어제"}}, "confidence": 0.95}}
+  ]
+- "오늘 약속은 영화보기고, 어제 새벽3시부터 12시까지 잤어" → [
+    {{"intent": "task_add", "entities": {{"task_title": "영화보기"}}, "confidence": 0.9}},
+    {{"intent": "sleep", "entities": {{"sleep_hours": 9, "date": "어제"}}, "confidence": 0.95}}
+  ]
+
+JSON만 응답하세요 (배열 또는 객체):"""
 
         if context:
             prompt += f"\n\n대화 컨텍스트:\n" + "\n".join(context[-3:])
@@ -197,9 +264,28 @@ JSON 형식으로만 응답하세요:
         # JSON 파싱
         import json
         try:
-            result = json.loads(response.strip())
-            result["success"] = True
-            return result
+            parsed = json.loads(response.strip())
+
+            # 배열인 경우 (복합 명령)
+            if isinstance(parsed, list):
+                # 모든 항목에 success 플래그 추가
+                for item in parsed:
+                    item["success"] = True
+                    item["parser"] = "llm"
+
+                return {
+                    "success": True,
+                    "multiple": True,
+                    "intents": parsed,  # 복합 의도들
+                    "parser": "llm"
+                }
+
+            # 객체인 경우 (단일 명령)
+            else:
+                parsed["success"] = True
+                parsed["parser"] = "llm"
+                return parsed
+
         except json.JSONDecodeError:
             return {
                 "success": False,
@@ -268,12 +354,36 @@ class OllamaLLMClient(LLMClient):
 사용자 입력: "{user_input}"
 
 분석 항목:
-1. intent: 의도 (sleep, workout, protein, task_add, task_complete, habit_check, summary, progress 중 하나)
-2. entities: 추출된 정보 (날짜, 시간, 수량 등)
+1. intent: 의도 (sleep, workout, protein, weight, task_add, task_complete, study, habit_check, summary, progress 중 하나)
+2. entities: 추출된 정보
+   - sleep: sleep_hours (시간 계산 필요 시 자동 계산. 예: "새벽3시부터 12시까지" → 9시간)
+   - workout: workout_minutes (분 단위)
+   - protein: protein_grams (그램)
+   - weight: weight_kg (킬로그램)
+   - task_add: task_title (할일 제목)
+   - task_complete: task_id 또는 task_title
+   - study: study_hours 또는 study_minutes (공부/공부중/학습 등)
+   - date: 날짜 ("어제"면 어제 날짜, "오늘"이면 오늘 날짜)
 3. confidence: 신뢰도 (0.0~1.0)
 
-JSON 형식으로만 응답하세요:
-{{"intent": "...", "entities": {{}}, "confidence": 0.0}}"""
+**중요**:
+- 여러 의도가 포함된 경우 JSON 배열로 반환하세요
+- 단일 의도면 JSON 객체로 반환하세요
+
+단일 의도 예시:
+- "새벽3시부터 12시까지 잤어" → {{"intent": "sleep", "entities": {{"sleep_hours": 9}}, "confidence": 0.95}}
+
+복합 의도 예시:
+- "어제 7시간 자고 30분 운동했어" → [
+    {{"intent": "sleep", "entities": {{"sleep_hours": 7, "date": "어제"}}, "confidence": 0.95}},
+    {{"intent": "workout", "entities": {{"workout_minutes": 30, "date": "어제"}}, "confidence": 0.95}}
+  ]
+- "오늘 약속은 영화보기고, 어제 새벽3시부터 12시까지 잤어" → [
+    {{"intent": "task_add", "entities": {{"task_title": "영화보기"}}, "confidence": 0.9}},
+    {{"intent": "sleep", "entities": {{"sleep_hours": 9, "date": "어제"}}, "confidence": 0.95}}
+  ]
+
+JSON만 응답하세요 (배열 또는 객체):"""
 
         if context:
             prompt += f"\n\n대화 컨텍스트:\n" + "\n".join(context[-3:])
@@ -287,9 +397,28 @@ JSON 형식으로만 응답하세요:
         # JSON 파싱
         import json
         try:
-            result = json.loads(response.strip())
-            result["success"] = True
-            return result
+            parsed = json.loads(response.strip())
+
+            # 배열인 경우 (복합 명령)
+            if isinstance(parsed, list):
+                # 모든 항목에 success 플래그 추가
+                for item in parsed:
+                    item["success"] = True
+                    item["parser"] = "llm"
+
+                return {
+                    "success": True,
+                    "multiple": True,
+                    "intents": parsed,  # 복합 의도들
+                    "parser": "llm"
+                }
+
+            # 객체인 경우 (단일 명령)
+            else:
+                parsed["success"] = True
+                parsed["parser"] = "llm"
+                return parsed
+
         except json.JSONDecodeError:
             return {
                 "success": False,
@@ -337,6 +466,11 @@ class LLMClientFactory:
         elif provider == "ollama":
             ollama_config = llm_config.get("ollama", {})
             return OllamaLLMClient(ollama_config)
+
+        elif provider == "langchain":
+            # LangChain 사용
+            from core.langchain_llm import LangChainLLM
+            return LangChainLLM(config_path)
 
         else:
             raise ValueError(f"지원하지 않는 LLM 제공자: {provider}")

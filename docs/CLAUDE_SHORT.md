@@ -6,29 +6,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LifeBot is a health and task management agent system with gamification (level-up system) that tracks health metrics (sleep, exercise, protein intake), tasks, and habits through a conversational interface. Users gain XP and level up as they complete tasks and achieve health goals.
 
-## Current Status: Phase 1 MVP Complete ✅
+## Current Status: Phase 2 Complete ✅ + Web UI ✅
 
-### Implemented (Phase 1)
+### Implemented (Phase 1 & 2)
 - ✅ Database schema (9 tables)
 - ✅ DataManagerAgent with full CRUD operations
 - ✅ GamificationAgent with XP/level system
 - ✅ Basic CLI interface
-- ✅ Initial achievements system (6 achievements)
+- ✅ Initial achievements system (20 achievements)
+- ✅ Korean language parsers (korean_patterns.py, date_parser.py, number_parser.py)
+- ✅ ConversationAgent for intent classification
+- ✅ CoachingAgent for alerts and insights
+- ✅ OrchestratorAgent for agent coordination
+- ✅ Natural language CLI (main_natural.py)
+- ✅ Streamlit Web UI (app.py, dashboard)
 
-### Next: Phase 2 (Natural Language Parsing)
-- [ ] Korean language parser (regex-based patterns)
-- [ ] ConversationAgent for intent classification
-- [ ] CoachingAgent for alerts and insights
-- [ ] OrchestratorAgent for agent coordination
-- [ ] Natural language CLI
+### Environment Setup (This PC)
+- Python 3.9.12
+- All dependencies installed (requirements.txt)
+- Database initialized (20 achievements loaded)
+- Web server running at http://localhost:8501
+
+### Next: Phase 3 (Advanced Features)
+- [ ] LLM integration (OpenAI/Claude API)
+- [ ] Advanced achievement conditions
+- [ ] Message bus architecture for async processing
 
 ## Architecture
 
 ### 5 Agent System
-1. **OrchestratorAgent** (조율자) - Routes messages between agents [Phase 2]
-2. **ConversationAgent** (대화형 파싱) - Parses Korean natural language input [Phase 2]
+1. **OrchestratorAgent** (조율자) - Routes messages between agents ✅
+2. **ConversationAgent** (대화형 파싱) - Parses Korean natural language input ✅
 3. **DataManagerAgent** (데이터 관리) - CRUD operations, statistics ✅
-4. **CoachingAgent** (알림/인사이트) - Health monitoring, pattern analysis [Phase 2]
+4. **CoachingAgent** (알림/인사이트) - Health monitoring, pattern analysis ✅
 5. **GamificationAgent** (레벨업 시스템) - XP, levels, achievements ✅
 
 ### Database Schema (9 Tables)
@@ -64,8 +74,15 @@ Level N → N+1 requires: 100 + (N-2) * 50 XP
 # Initialize database (first time only)
 python3 core/database.py
 
-# Run CLI
+# Run basic CLI (manual commands)
 python3 main.py
+
+# Run natural language CLI
+python3 main_natural.py
+
+# Run web UI
+bash run_web.sh
+# Then open http://localhost:8501
 ```
 
 ### Testing
@@ -84,16 +101,26 @@ pytest --cov=agents --cov=parsers
 ```
 LifeBot/
 ├── agents/           # Agent implementations
-│   ├── base_agent.py
+│   ├── base_agent.py ✅
+│   ├── orchestrator.py ✅
+│   ├── conversation.py ✅
 │   ├── data_manager.py ✅
+│   ├── coaching.py ✅
 │   └── gamification.py ✅
 ├── core/             # Core modules
 │   ├── database.py ✅
-│   └── config.py (to be added)
-├── parsers/          # Korean language parsers (Phase 2)
-├── rules/            # Alert and XP rules (Phase 2)
+│   └── config.py ✅
+├── parsers/          # Korean language parsers
+│   ├── korean_patterns.py ✅
+│   ├── date_parser.py ✅
+│   └── number_parser.py ✅
 ├── interfaces/       # User interfaces
-└── tests/            # Test suites
+│   ├── main.py (basic CLI) ✅
+│   ├── main_natural.py (NL CLI) ✅
+│   ├── app.py (Streamlit web) ✅
+│   ├── demo_dashboard.py ✅
+│   └── show_dashboard.py ✅
+└── tests/            # Test suites ✅
 
 ## Conversational Interface Examples (Phase 2)
 

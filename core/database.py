@@ -152,11 +152,24 @@ class Database:
             )
         """)
 
+        # 10. 학습 기록 (Learning Logs)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS learning_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL,
+                title TEXT NOT NULL,
+                content TEXT,
+                category TEXT,
+                tags TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # 인덱스 생성
         self._create_indexes(cursor)
 
         self.conn.commit()
-        print("✓ 데이터베이스 스키마 초기화 완료 (9개 테이블)")
+        print("✓ 데이터베이스 스키마 초기화 완료 (10개 테이블)")
 
     def _create_indexes(self, cursor):
         """성능 최적화를 위한 인덱스 생성"""
@@ -171,6 +184,8 @@ class Database:
             "CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category)",
             "CREATE INDEX IF NOT EXISTS idx_exp_logs_date ON exp_logs(date)",
             "CREATE INDEX IF NOT EXISTS idx_exp_logs_action_type ON exp_logs(action_type)",
+            "CREATE INDEX IF NOT EXISTS idx_learning_logs_date ON learning_logs(date)",
+            "CREATE INDEX IF NOT EXISTS idx_learning_logs_category ON learning_logs(category)",
         ]
 
         for index_sql in indexes:

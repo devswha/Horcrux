@@ -173,17 +173,16 @@ class OrchestratorAgent(BaseAgent):
             }
 
         # 메시지 조합
-        message_parts = [f"네, {len(results)}가지 기록했어요! 😊\n"]
+        message_parts = [f"{len(results)}개 항목 기록됨.\n"]
 
         for idx, res in enumerate(results, 1):
-            emoji = self._get_emoji_for_intent(res["intent"])
-            # 메시지에서 첫 줄만 추출 (✓로 시작하는 부분)
+            # 메시지에서 첫 줄만 추출
             msg_lines = res["message"].split("\n")
             main_msg = msg_lines[0] if msg_lines else res["message"]
-            message_parts.append(f"{emoji} {main_msg}")
+            message_parts.append(f"{idx}. {main_msg}")
 
         if total_exp > 0:
-            message_parts.append(f"\n💪 총 +{total_exp} XP 획득! 계속 이렇게 꾸준히 해보세요!")
+            message_parts.append(f"\n총 +{total_exp} XP")
 
         final_message = "\n".join(message_parts)
 
@@ -203,19 +202,9 @@ class OrchestratorAgent(BaseAgent):
         }
 
     def _get_emoji_for_intent(self, intent: str) -> str:
-        """의도별 이모지 반환"""
-        emoji_map = {
-            "sleep": "💤",
-            "workout": "💪",
-            "protein": "🍗",
-            "weight": "⚖️",
-            "task_add": "📝",
-            "task_complete": "✅",
-            "study": "📚",
-            "summary": "📊",
-            "progress": "📈"
-        }
-        return emoji_map.get(intent, "✓")
+        """의도별 접두사 반환 (Precision Mode: 이모지 제거)"""
+        # Precision Mode: 이모지 제거. 추후 필요시 재활성화 가능
+        return ""
 
     def _handle_sleep(self, entities: Dict[str, Any]) -> Dict[str, Any]:
         """수면 기록 처리"""
@@ -247,7 +236,7 @@ class OrchestratorAgent(BaseAgent):
             exp_result = self.gamification.award_exp("sleep_goal", hours, f"수면 {hours}시간")
 
         # 응답 조합
-        message_parts = [f"✓ 수면 기록 완료: {hours}시간"]
+        message_parts = [f"수면 기록: {hours}시간"]
 
         # 알림 추가
         for alert in alerts:
@@ -256,12 +245,12 @@ class OrchestratorAgent(BaseAgent):
         # 경험치 정보
         if exp_result and exp_result.get("success"):
             exp_gained = exp_result.get("exp_gained", 0)
-            message_parts.append(f"  +{exp_gained} XP")
+            message_parts.append(f"+{exp_gained} XP")
 
             if exp_result.get("level_up"):
                 old_level = exp_result.get("new_level", 1) - 1
                 new_level = exp_result.get("new_level", 1)
-                message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+                message_parts.append(f"레벨업: {old_level} → {new_level}")
 
         return {
             "success": True,
@@ -296,19 +285,19 @@ class OrchestratorAgent(BaseAgent):
         exp_result = self.gamification.award_exp("workout", minutes, f"운동 {minutes}분")
 
         # 응답
-        message_parts = [f"✓ 운동 기록 완료: {minutes}분"]
+        message_parts = [f"운동 기록: {minutes}분"]
 
         for alert in alerts:
             message_parts.append(alert.get("message", ""))
 
         if exp_result and exp_result.get("success"):
             exp_gained = exp_result.get("exp_gained", 0)
-            message_parts.append(f"  +{exp_gained} XP")
+            message_parts.append(f"+{exp_gained} XP")
 
             if exp_result.get("level_up"):
                 old_level = exp_result.get("new_level", 1) - 1
                 new_level = exp_result.get("new_level", 1)
-                message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+                message_parts.append(f"레벨업: {old_level} → {new_level}")
 
         return {
             "success": True,
@@ -343,14 +332,14 @@ class OrchestratorAgent(BaseAgent):
         if grams >= 100:  # 목표 달성
             exp_result = self.gamification.award_exp("protein_goal", grams, f"단백질 {grams}g")
 
-        message_parts = [f"✓ 단백질 기록 완료: {grams}g"]
+        message_parts = [f"단백질 기록: {grams}g"]
 
         for alert in alerts:
             message_parts.append(alert.get("message", ""))
 
         if exp_result and exp_result.get("success"):
             exp_gained = exp_result.get("exp_gained", 0)
-            message_parts.append(f"  +{exp_gained} XP")
+            message_parts.append(f"+{exp_gained} XP")
 
         return {
             "success": True,
@@ -372,7 +361,7 @@ class OrchestratorAgent(BaseAgent):
 
         return {
             "success": True,
-            "message": f"✓ 체중 기록 완료: {weight}kg"
+            "message": f"체중 기록: {weight}kg"
         }
 
     def _handle_study(self, entities: Dict[str, Any]) -> Dict[str, Any]:
@@ -407,16 +396,16 @@ class OrchestratorAgent(BaseAgent):
             f"공부 {study_hours:.1f}시간"
         )
 
-        message_parts = [f"✓ 공부 기록 완료: {study_hours:.1f}시간 ({total_minutes}분)"]
+        message_parts = [f"공부 기록: {study_hours:.1f}시간 ({total_minutes}분)"]
 
         if exp_result and exp_result.get("success"):
             exp_gained = exp_result.get("exp_gained", 0)
-            message_parts.append(f"  +{exp_gained} XP")
+            message_parts.append(f"+{exp_gained} XP")
 
             if exp_result.get("level_up"):
                 old_level = exp_result.get("new_level", 1) - 1
                 new_level = exp_result.get("new_level", 1)
-                message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+                message_parts.append(f"레벨업: {old_level} → {new_level}")
 
         return {
             "success": True,
@@ -454,18 +443,18 @@ class OrchestratorAgent(BaseAgent):
                 f"학습: {title}"
             )
 
-            message_parts = [f"📚 학습 기록 저장: {title}"]
+            message_parts = [f"학습 기록: {title}"]
             if content:
-                message_parts.append(f"   내용: {content[:50]}{'...' if len(content) > 50 else ''}")
+                message_parts.append(f"내용: {content[:50]}{'...' if len(content) > 50 else ''}")
 
             if exp_result and exp_result.get("success"):
                 exp_gained = exp_result.get("exp_gained", 0)
-                message_parts.append(f"  +{exp_gained} XP")
+                message_parts.append(f"+{exp_gained} XP")
 
                 if exp_result.get("level_up"):
                     old_level = exp_result.get("new_level", 1) - 1
                     new_level = exp_result.get("new_level", 1)
-                    message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+                    message_parts.append(f"레벨업: {old_level} → {new_level}")
 
             return {
                 "success": True,
@@ -494,7 +483,7 @@ class OrchestratorAgent(BaseAgent):
         if result.get("success"):
             return {
                 "success": True,
-                "message": f"✓ 할일 추가: [{result['task_id']}] {title}"
+                "message": f"할일 추가: [{result['task_id']}] {title}"
             }
         else:
             return {
@@ -524,16 +513,16 @@ class OrchestratorAgent(BaseAgent):
         priority = result.get("priority", "normal")
         exp_result = self.gamification.award_exp("task_complete", priority, f"할일 완료: {result.get('title')}")
 
-        message_parts = [f"✓ 할일 완료: {result.get('title')}"]
+        message_parts = [f"할일 완료: {result.get('title')}"]
 
         if exp_result and exp_result.get("success"):
             exp_gained = exp_result.get("exp_gained", 0)
-            message_parts.append(f"  +{exp_gained} XP")
+            message_parts.append(f"+{exp_gained} XP")
 
             if exp_result.get("level_up"):
                 old_level = exp_result.get("new_level", 1) - 1
                 new_level = exp_result.get("new_level", 1)
-                message_parts.append(f"\n🎉 레벨업! {old_level} → {new_level}")
+                message_parts.append(f"레벨업: {old_level} → {new_level}")
 
         return {
             "success": True,
@@ -546,7 +535,7 @@ class OrchestratorAgent(BaseAgent):
 
         summary = self.data_manager.get_summary(date)
 
-        message_parts = [f"📊 {summary['date']} 요약", ""]
+        message_parts = [f"{summary['date']} 요약", ""]
 
         # 건강 지표
         health = summary["health"]
@@ -555,22 +544,22 @@ class OrchestratorAgent(BaseAgent):
         protein = health.get("protein_g")
         weight = health.get("weight_kg")
 
-        message_parts.append(f"💤 수면: {sleep}시간" if sleep else "💤 수면: 기록 없음")
-        message_parts.append(f"💪 운동: {workout}분" if workout else "💪 운동: 기록 없음")
-        message_parts.append(f"🍗 단백질: {protein}g" if protein else "🍗 단백질: 기록 없음")
+        message_parts.append(f"수면: {sleep}시간" if sleep else "수면: 미기록")
+        message_parts.append(f"운동: {workout}분" if workout else "운동: 미기록")
+        message_parts.append(f"단백질: {protein}g" if protein else "단백질: 미기록")
         if weight:
-            message_parts.append(f"⚖️ 체중: {weight}kg")
+            message_parts.append(f"체중: {weight}kg")
 
         # 할일
         tasks = summary["tasks"]
-        message_parts.append(f"📝 할일: 완료 {tasks['done']}/{tasks['total']}")
+        message_parts.append(f"할일: {tasks['done']}/{tasks['total']} 완료")
 
         # 습관
         if summary["habits"]:
-            message_parts.append("\n🔥 습관:")
+            message_parts.append("\n습관:")
             for habit in summary["habits"]:
-                status_emoji = "✓" if habit["status"] == "success" else "✗"
-                message_parts.append(f"  {status_emoji} {habit['name']} (streak: {habit['streak']}일)")
+                status = "달성" if habit["status"] == "success" else "미달성"
+                message_parts.append(f"  {habit['name']}: {status} (streak: {habit['streak']}일)")
 
         return {
             "success": True,
@@ -585,16 +574,13 @@ class OrchestratorAgent(BaseAgent):
         current_exp = progress["current_exp"]
         next_exp = progress["next_level_exp"]
         percent = progress["progress_percent"]
-        achievements = progress["achievements"]
 
         bar_length = 20
         filled = int(percent // 5)
         bar = "=" * filled + " " * (bar_length - filled)
 
-        message = f"""
-📊 Level {level} ({current_exp}/{next_exp} XP) | 🏆 업적 {achievements}
-진행도: [{bar}] {percent}%
-""".strip()
+        message = f"""Level {level} ({current_exp}/{next_exp} XP)
+진행도: [{bar}] {percent}%""".strip()
 
         return {
             "success": True,
@@ -605,7 +591,8 @@ class OrchestratorAgent(BaseAgent):
         """일반 대화 처리"""
         try:
             # LangChain의 chat 메서드 호출
-            user_message = entities.get("message", "안녕하세요!")
+            # entities에 message가 없으면 original_text 사용
+            user_message = entities.get("message") or entities.get("original_text", "안녕하세요!")
 
             if self.llm and hasattr(self.llm, 'chat'):
                 response = self.llm.chat(user_message)
@@ -632,7 +619,7 @@ class OrchestratorAgent(BaseAgent):
         basic_message: str
     ) -> str:
         """
-        LLM을 사용해 응답을 대화형으로 변환
+        LLM을 사용해 응답 최적화 (Precision Mode)
 
         Args:
             user_input: 사용자 원본 입력
@@ -640,32 +627,7 @@ class OrchestratorAgent(BaseAgent):
             basic_message: 기본 응답 메시지
 
         Returns:
-            대화형 응답
+            최적화된 응답
         """
-        if not self.llm:
-            return basic_message
-
-        try:
-            system_prompt = """당신은 친근하고 격려하는 헬스케어 어시스턴트입니다.
-사용자의 건강 데이터 기록에 대해 따뜻하게 반응하고 격려해주세요.
-기본 정보는 그대로 유지하되, 대화형으로 다시 작성하세요.
-이모지를 적절히 사용하고, 2-3문장으로 간결하게 작성하세요."""
-
-            prompt = f"""사용자: "{user_input}"
-
-기본 응답: {basic_message}
-
-위 기본 응답을 친근하고 격려하는 톤으로 다시 작성해주세요.
-XP, 레벨, 시간/수치 등의 정보는 반드시 그대로 포함하되, 더 대화적으로 표현하세요."""
-
-            conversational = self.llm.generate_response(
-                user_input=basic_message,
-                context=basic_message,
-                tone="friendly"
-            )
-
-            return conversational.strip()
-
-        except Exception as e:
-            print(f"⚠️ 대화형 응답 생성 실패: {e}")
-            return basic_message
+        # Precision Mode: 대화형 변환 비활성화. 기본 메시지 그대로 사용.
+        return basic_message

@@ -1,4 +1,4 @@
-# 🔗 LifeBot LLM 체인 구조
+# 🔗 Horcrux LLM 체인 구조
 
 ## 📊 전체 흐름도
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LifeBot 고급 데모 - 다양한 입력 테스트
+Horcrux 고급 데모 - 다양한 입력 테스트
 """
 from core.database import Database
 from agents.conversation import ConversationAgent
@@ -13,7 +13,7 @@ from agents.orchestrator import OrchestratorAgent
 def demo():
     """다양한 자연어 입력 테스트"""
     print("=" * 60)
-    print("🤖 LifeBot 고급 데모 - 다양한 입력 패턴 테스트")
+    print("🤖 Horcrux 고급 데모 - 다양한 입력 패턴 테스트")
     print("=" * 60)
     print()
 

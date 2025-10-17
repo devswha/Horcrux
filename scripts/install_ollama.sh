@@ -15,4 +15,4 @@ ollama pull llama3.2:3b
 
 echo ""
 echo "✅ Ollama 설치 완료!"
-echo "이제 LifeBot에서 LLM 기능을 사용할 수 있습니다."
+echo "이제 Horcrux에서 LLM 기능을 사용할 수 있습니다."

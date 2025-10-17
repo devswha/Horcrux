@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LifeBot is a health and task management agent system with gamification (level-up system) that tracks health metrics (sleep, exercise, protein intake), tasks, and habits through a conversational interface. Users gain XP and level up as they complete tasks and achieve health goals.
+Horcrux is a health and task management agent system with gamification (level-up system) that tracks health metrics (sleep, exercise, protein intake), tasks, and habits through a conversational interface. Users gain XP and level up as they complete tasks and achieve health goals.
 
 ## Current Status: Phase 2 Complete ✅ + Web UI ✅
 
@@ -99,7 +99,7 @@ pytest --cov=agents --cov=parsers
 
 ### Project Structure
 ```
-LifeBot/
+Horcrux/
 ├── agents/           # Agent implementations
 │   ├── base_agent.py ✅
 │   ├── orchestrator.py ✅

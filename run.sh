@@ -1,8 +1,8 @@
 #!/bin/bash
-# LifeBot 실행 스크립트
+# Horcrux 실행 스크립트
 
 echo "╔═══════════════════════════════════════╗"
-echo "║       🤖 LifeBot Health Manager       ║"
+echo "║       🤖 Horcrux Health Manager       ║"
 echo "║         건강/할일 관리 시스템         ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
@@ -41,5 +41,5 @@ elif [ "$1" = "test" ]; then
     pytest tests/
 else
     # 메뉴 표시
-    python3 lifebot.py
+    python3 horcrux.py
 fi

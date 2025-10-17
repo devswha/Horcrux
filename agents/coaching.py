@@ -100,20 +100,20 @@ class CoachingAgent(BaseAgent):
             return {
                 "type": "warning",
                 "category": "sleep",
-                "message": f"⚠️ 목표({target}시간)보다 {diff:.1f}시간 부족합니다. 충분한 수면이 중요해요!"
+                "message": f"목표({target}h) 대비 -{diff:.1f}h"
             }
         elif hours < target:
             diff = target - hours
             return {
                 "type": "info",
                 "category": "sleep",
-                "message": f"💤 목표보다 {diff:.1f}시간 부족하네요."
+                "message": f"목표 대비 -{diff:.1f}h"
             }
         else:
             return {
                 "type": "success",
                 "category": "sleep",
-                "message": f"✓ 목표 달성! 좋은 수면이었습니다."
+                "message": f"목표 달성 ({hours}h)"
             }
 
     def _check_workout_alert(self, minutes: int) -> Dict[str, str]:
@@ -124,20 +124,20 @@ class CoachingAgent(BaseAgent):
             return {
                 "type": "info",
                 "category": "workout",
-                "message": "💪 오늘 운동은 어떠세요? 가벼운 스트레칭도 좋아요!"
+                "message": "운동 미기록"
             }
         elif minutes < target:
             diff = target - minutes
             return {
                 "type": "info",
                 "category": "workout",
-                "message": f"목표까지 {diff}분 남았어요. 조금만 더 화이팅!"
+                "message": f"목표 대비 -{diff}분"
             }
         else:
             return {
                 "type": "success",
                 "category": "workout",
-                "message": f"✓ 목표 달성! {minutes}분 운동 훌륭합니다!"
+                "message": f"목표 달성 ({minutes}분)"
             }
 
     def _check_protein_alert(self, grams: float) -> Dict[str, str]:
@@ -149,13 +149,13 @@ class CoachingAgent(BaseAgent):
             return {
                 "type": "info",
                 "category": "protein",
-                "message": f"🍗 목표까지 {diff:.0f}g 남았어요."
+                "message": f"목표 대비 -{diff:.0f}g"
             }
         else:
             return {
                 "type": "success",
                 "category": "protein",
-                "message": f"✓ 단백질 목표 달성!"
+                "message": f"목표 달성 ({grams}g)"
             }
 
     def _check_pattern_alerts(self) -> List[Dict[str, str]]:
@@ -181,7 +181,7 @@ class CoachingAgent(BaseAgent):
             alerts.append({
                 "type": "warning",
                 "category": "sleep_pattern",
-                "message": f"⚠️ {consecutive_days}일 연속 수면 부족입니다. 건강을 위해 충분한 휴식을 취하세요!"
+                "message": f"{consecutive_days}일 연속 수면 부족"
             })
 
         # 운동 0분 연속 체크
@@ -196,7 +196,7 @@ class CoachingAgent(BaseAgent):
             alerts.append({
                 "type": "info",
                 "category": "workout_pattern",
-                "message": f"💪 {consecutive_days}일째 운동 기록이 없네요. 오늘은 가벼운 산책 어떠세요?"
+                "message": f"{consecutive_days}일 연속 운동 미기록"
             })
 
         return alerts
@@ -228,13 +228,13 @@ class CoachingAgent(BaseAgent):
                 insights.append({
                     "type": "trend",
                     "category": "sleep",
-                    "message": f"📊 주간 평균 수면: {avg_sleep:.1f}시간. 목표보다 낮습니다."
+                    "message": f"주간 평균 수면: {avg_sleep:.1f}h (목표: {target}h)"
                 })
             else:
                 insights.append({
                     "type": "trend",
                     "category": "sleep",
-                    "message": f"📊 주간 평균 수면: {avg_sleep:.1f}시간. 잘하고 계세요!"
+                    "message": f"주간 평균 수면: {avg_sleep:.1f}h"
                 })
 
         # 주간 총 운동 시간
@@ -250,7 +250,7 @@ class CoachingAgent(BaseAgent):
             insights.append({
                 "type": "trend",
                 "category": "workout",
-                "message": f"💪 이번 주 총 운동: {total_workout}분"
+                "message": f"주간 총 운동: {total_workout}분"
             })
 
         return {
@@ -273,7 +273,7 @@ class CoachingAgent(BaseAgent):
         exp_reward = achievement.get("exp_reward", 0)
         icon = achievement.get("icon", "🏆")
 
-        return f"\n{icon} 새 업적 달성!\n\"{name}\"\n{description}\n+{exp_reward} XP 보상"
+        return f"\n업적 달성: {name}\n{description}\n+{exp_reward} XP"
 
     def suggest_action(self, context: Dict[str, Any]) -> str:
         """
@@ -294,16 +294,8 @@ class CoachingAgent(BaseAgent):
             except Exception:
                 pass  # LLM 실패 시 기본 제안 사용
 
-        # 기본 제안 로직
-        suggestions = [
-            "💡 오늘 건강 목표를 달성해보세요!",
-            "🎯 할일을 하나씩 완료하며 경험치를 모아보세요!",
-            "🌟 꾸준함이 가장 중요해요. 작은 습관부터 시작하세요!",
-        ]
-
-        # 랜덤 또는 컨텍스트 기반 제안
-        import random
-        return random.choice(suggestions)
+        # Precision Mode: 제안 비활성화
+        return ""
 
     def generate_personalized_advice(self, context: Dict[str, Any]) -> str:
         """
@@ -341,8 +333,9 @@ class CoachingAgent(BaseAgent):
             return ""
 
     def _build_advice_prompt(self, context: Dict[str, Any]) -> str:
-        """조언 생성 프롬프트 구성"""
-        prompt_parts = ["사용자의 현재 상태를 보고 짧고 격려하는 조언을 한 문장으로 주세요.\n\n현재 상태:"]
+        """조언 생성 프롬프트 구성 (Precision Mode: 비활성화)"""
+        # Precision Mode: 조언 생성 비활성화
+        return ""
 
         if "recent_sleep" in context:
             avg_sleep = context["recent_sleep"].get("average", 0)

@@ -85,11 +85,11 @@ class Config:
                 "strategy": "fallback"
             },
             "database": {
-                "path": "lifebot.db"
+                "path": "horcrux.db"
             },
             "logging": {
                 "level": "INFO",
-                "file": "lifebot.log",
+                "file": "horcrux.log",
                 "console": True
             },
             "web_ui": {

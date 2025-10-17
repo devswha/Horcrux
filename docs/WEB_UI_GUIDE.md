@@ -1,4 +1,4 @@
-# LifeBot 웹 UI 가이드 🌐
+# Horcrux 웹 UI 가이드 🌐
 
 ## 시작하기
 
@@ -176,7 +176,7 @@ streamlit run app.py
 - 탭 전환: 사이드바 메뉴 클릭
 
 ### 데이터 관리
-- 모든 데이터는 `lifebot.db`에 저장
+- 모든 데이터는 `horcrux.db`에 저장
 - 백업: DB 파일 복사
 - 초기화: DB 파일 삭제 후 `python3 core/database.py`
 

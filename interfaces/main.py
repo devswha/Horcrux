@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LifeBot - 건강/할일 관리 에이전트 시스템 (MVP)
+Horcrux - 건강/할일 관리 에이전트 시스템 (MVP)
 """
 import sys
 from pathlib import Path
@@ -14,7 +14,7 @@ from agents.data_manager import DataManagerAgent
 from agents.gamification import GamificationAgent
 
 
-class LifeBotCLI:
+class HorcruxCLI:
     """간단한 CLI 인터페이스 (Phase 1 MVP)"""
 
     def __init__(self):
@@ -27,7 +27,7 @@ class LifeBotCLI:
     def run(self):
         """CLI 메인 루프"""
         print("=" * 50)
-        print("🤖 LifeBot - 건강/할일 관리 시스템 (MVP)")
+        print("🤖 Horcrux - 건강/할일 관리 시스템 (MVP)")
         print("=" * 50)
         print()
 
@@ -221,7 +221,7 @@ class LifeBotCLI:
 
 def main():
     """메인 함수"""
-    cli = LifeBotCLI()
+    cli = HorcruxCLI()
 
     try:
         cli.run()

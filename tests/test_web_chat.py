@@ -16,7 +16,7 @@ from core.llm_client import LLMClientFactory
 import sqlite3
 
 # DB 연결
-db_conn = sqlite3.connect('lifebot.db')
+db_conn = sqlite3.connect('horcrux.db')
 db_conn.row_factory = sqlite3.Row  # dictionary-like access 활성화
 
 # 에이전트 초기화

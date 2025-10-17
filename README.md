@@ -1,4 +1,4 @@
-# LifeBot 🤖
+# Horcrux 🤖
 
 건강/할일 관리 에이전트 시스템 with 게임화 (레벨업 시스템)
 
@@ -61,7 +61,7 @@ python3 core/database.py
 
 ```bash
 # 메인 메뉴
-python3 lifebot.py
+python3 horcrux.py
 
 # 웹 대시보드
 streamlit run interfaces/app.py
@@ -246,7 +246,7 @@ pip install pyyaml python-dotenv
 ## 주요 파일 구조
 
 ```
-LifeBot/
+Horcrux/
 ├── agents/              # 에이전트 (5개)
 │   ├── conversation.py  # 자연어 파싱 + LLM 백업
 │   ├── coaching.py      # 알림 + LLM 조언
@@ -272,7 +272,7 @@ LifeBot/
 │   ├── CLAUDE.md       # Claude Code 지침
 │   ├── PROMPTS.md      # 프롬프트 템플릿
 │   └── WEB_UI_GUIDE.md # 웹 UI 가이드
-├── lifebot.py          # 메인 진입점
+├── horcrux.py          # 메인 진입점
 ├── run.sh              # 실행 스크립트
 ├── config.yaml         # 설정
 ├── .env.example        # 환경변수 템플릿

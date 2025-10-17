@@ -1,3 +1,3 @@
 """
-LifeBot Core 모듈
+Horcrux Core 모듈
 """

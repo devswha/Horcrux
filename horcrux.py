@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LifeBot - Main Entry Point
+Horcrux - Main Entry Point
 건강/할일 관리 에이전트 시스템
 """
 import sys
@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def main():
     """메인 실행 함수"""
-    print("🤖 LifeBot 시작 옵션:")
+    print("🤖 Horcrux 시작 옵션:")
     print("1. 자연어 대화 모드 (추천)")
     print("2. 명령어 모드")
     print("3. 웹 대시보드")

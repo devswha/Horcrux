@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LifeBot 데모 스크립트
+Horcrux 데모 스크립트
 """
 from core.database import Database
 from agents.conversation import ConversationAgent
@@ -13,7 +13,7 @@ from agents.orchestrator import OrchestratorAgent
 def demo():
     """자연어 입력 데모"""
     print("=" * 60)
-    print("🤖 LifeBot 데모")
+    print("🤖 Horcrux 데모")
     print("=" * 60)
     print()
 

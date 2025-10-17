@@ -27,7 +27,7 @@ def demo_sidebar():
 
     progress = gamification.get_progress_summary()
 
-    print(f"\n🤖 LifeBot")
+    print(f"\n🤖 Horcrux")
     print("-" * 60)
     print(f"레벨: Level {progress['level']}")
     print(f"경험치: {progress['current_exp']}/{progress['next_level_exp']} XP")
@@ -285,7 +285,7 @@ def main():
     """메인 데모"""
     print("\n")
     print("╔" + "═" * 58 + "╗")
-    print("║" + " " * 10 + "🤖 LifeBot 웹 대시보드 데모 (CLI 버전)" + " " * 9 + "║")
+    print("║" + " " * 10 + "🤖 Horcrux 웹 대시보드 데모 (CLI 버전)" + " " * 9 + "║")
     print("╚" + "═" * 58 + "╝")
 
     # 사이드바

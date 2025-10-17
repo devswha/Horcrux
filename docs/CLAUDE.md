@@ -1,4 +1,4 @@
-# LifeBot — 건강/할일 관리 에이전트 시스템 (게임화)
+# Horcrux — 건강/할일 관리 에이전트 시스템 (게임화)
 
 ## 📋 프로젝트 개요
 대화형 입력을 통해 건강 지표와 할일을 추적하고, 레벨업 시스템으로 동기부여를 제공하는 AI 에이전트 시스템
@@ -284,7 +284,7 @@ CREATE TABLE achievement_logs (
 ## 📁 프로젝트 구조
 
 ```
-LifeBot/
+Horcrux/
 ├── agents/
 │   ├── __init__.py
 │   ├── base_agent.py          # BaseAgent 추상 클래스
@@ -511,7 +511,7 @@ llm:
 
 # DB 설정
 database:
-  path: "lifebot.db"
+  path: "horcrux.db"
   backup_enabled: true
 ```
 

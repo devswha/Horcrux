@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LifeBot - 건강/할일 관리 에이전트 시스템 (자연어 버전)
+Horcrux - 건강/할일 관리 에이전트 시스템 (자연어 버전)
 Phase 2: 한국어 자연어 처리 지원
 """
 import os
@@ -23,7 +23,7 @@ from agents.coaching import CoachingAgent
 from agents.orchestrator import OrchestratorAgent
 
 
-class LifeBotNaturalCLI:
+class HorcruxNaturalCLI:
     """자연어 입력 지원 CLI"""
 
     def __init__(self):
@@ -46,7 +46,7 @@ class LifeBotNaturalCLI:
     def run(self):
         """CLI 메인 루프"""
         print("=" * 60)
-        print("🤖 LifeBot - 건강/할일 관리 시스템 (자연어 버전)")
+        print("🤖 Horcrux - 건강/할일 관리 시스템 (자연어 버전)")
         print("=" * 60)
         print()
 
@@ -152,7 +152,7 @@ class LifeBotNaturalCLI:
 
 def main():
     """메인 함수"""
-    cli = LifeBotNaturalCLI()
+    cli = HorcruxNaturalCLI()
 
     try:
         cli.run()

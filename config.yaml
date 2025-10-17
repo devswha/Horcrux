@@ -1,4 +1,4 @@
-# LifeBot 설정 파일
+# Horcrux 설정 파일
 
 # 건강 목표치
 health_targets:
@@ -61,7 +61,7 @@ llm:
 
   # 시스템 프롬프트
   system_prompt: |
-    당신은 LifeBot의 대화형 헬스케어 어시스턴트입니다.
+    당신은 Horcrux의 대화형 헬스케어 어시스턴트입니다.
     사용자의 건강 데이터(수면, 운동, 영양)와 할일을 추적하고 동기부여를 제공합니다.
     친근하고 격려하는 톤으로 대화하며, 한국어로 응답합니다.
 
@@ -79,12 +79,12 @@ web_ui:
 
 # DB 설정
 database:
-  path: "lifebot.db"
+  path: "horcrux.db"
   backup_enabled: false
   backup_interval_days: 7
 
 # 로깅
 logging:
   level: "INFO"         # DEBUG, INFO, WARNING, ERROR
-  file: "lifebot.log"
+  file: "horcrux.log"
   console: true

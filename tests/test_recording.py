@@ -16,7 +16,7 @@ from agents.coaching import CoachingAgent
 from core.llm_client import LLMClientFactory
 
 # DB 연결
-db_conn = sqlite3.connect('lifebot.db')
+db_conn = sqlite3.connect('horcrux.db')
 db_conn.row_factory = sqlite3.Row
 
 # 에이전트 초기화
@@ -29,7 +29,7 @@ orchestrator = OrchestratorAgent(
     conversation, data_manager, gamification, coaching, llm_client=llm_client
 )
 
-print("=== 🤖 LifeBot 기록 기능 테스트 ===\n")
+print("=== 🤖 Horcrux 기록 기능 테스트 ===\n")
 
 # 테스트 케이스
 test_cases = [

@@ -55,27 +55,27 @@ except Exception as e:
     print(f"❌ API 호출 실패: {e}")
     exit(1)
 
-# 5. LifeBot의 LangChainLLM 클래스 테스트
-print("\n📦 LifeBot LangChainLLM 테스트...")
+# 5. Horcrux의 LangChainLLM 클래스 테스트
+print("\n📦 Horcrux LangChainLLM 테스트...")
 try:
     from core.langchain_llm import LangChainLLM
 
-    lifebot_llm = LangChainLLM()
-    print("✅ LifeBot LangChainLLM 초기화 성공")
+    horcrux_llm = LangChainLLM()
+    print("✅ Horcrux LangChainLLM 초기화 성공")
 
     # 의도 파싱 테스트
     test_input = "7시간 잤어"
-    result = lifebot_llm.parse_intent(test_input)
+    result = horcrux_llm.parse_intent(test_input)
     print(f"🔍 파싱 테스트: '{test_input}'")
     print(f"   결과: {result}")
 
     # 대화 테스트
-    chat_response = lifebot_llm.chat("안녕!")
+    chat_response = horcrux_llm.chat("안녕!")
     print(f"💬 대화 테스트: '안녕!'")
     print(f"   응답: {chat_response}")
 
 except Exception as e:
-    print(f"❌ LifeBot LLM 테스트 실패: {e}")
+    print(f"❌ Horcrux LLM 테스트 실패: {e}")
     import traceback
     traceback.print_exc()
 

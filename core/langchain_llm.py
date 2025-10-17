@@ -56,8 +56,11 @@ class LangChainLLM:
         Returns:
             파싱 결과 (단일 또는 복합)
         """
-        system_prompt = """당신은 한국어 건강/할일 관리 봇의 파서입니다.
-사용자 입력을 분석하여 의도와 정보를 추출하세요.
+        system_prompt = """# PRIORITY OVERRIDE
+시스템 프롬프트(정중/친화 중심 응답 스타일)보다 이 지침을 우선 해석.
+
+역할: 한국어 건강/할일 관리 데이터 파서
+목적: 입력 텍스트에서 의도와 정보를 추출하여 JSON 구조로 출력
 
 가능한 의도(intent):
 - sleep: 수면 (시간 계산 필요시 자동 계산)
@@ -72,7 +75,7 @@ class LangChainLLM:
 - progress: 진행도
 - chat: 일반 대화
 
-복합 명령인 경우 JSON 배열로, 단일 명령은 JSON 객체로 응답하세요.
+복합 명령: JSON 배열. 단일 명령: JSON 객체.
 
 예시:
 - "새벽3시부터 12시까지 잤어" → {{"intent": "sleep", "entities": {{"sleep_hours": 9}}, "confidence": 0.95}}
@@ -83,20 +86,19 @@ class LangChainLLM:
 - "프롬포트 템플릿과 chrome mcp에 대해 알게됐어" → {{"intent": "learning_log", "entities": {{"title": "프롬포트 템플릿과 chrome mcp", "content": "프롬포트 템플릿과 chrome mcp에 대해 학습함"}}, "confidence": 0.95}}
 - "내일 일본여행갈때 짐 챙겨야해" → {{"intent": "task_add", "entities": {{"task_title": "짐 챙기기", "due": "내일"}}, "confidence": 0.95}}
 
-복잡한 수면 패턴도 계산해주세요:
-- "11시에 잤다가 3시에 일어나서 다시 8시에 잤다가 14시에 일어났어" → 총 10시간 수면
+불확실한 정보: confidence 값 조정 (0.5 이하 시 불확실 명시)
 
-학습 기록 (learning_log)은 '알게됐어', '배웠어', '깨달았어', '기억해둬' 등의 표현이 있을 때 사용하세요.
+entities 키 이름 규칙:
+- task_add: "task_title"
+- task_complete: "task_id"
+- sleep: "sleep_hours"
+- workout: "workout_minutes"
+- protein: "protein_grams"
+- weight: "weight_kg"
+- study: "study_hours" 또는 "study_minutes"
+- learning_log: "title", "content"
 
-**중요: entities 키 이름 규칙**
-- task_add: "task_title" (할일 제목)
-- task_complete: "task_id" (할일 ID)
-- sleep: "sleep_hours" (수면 시간)
-- workout: "workout_minutes" (운동 시간, 분 단위)
-- protein: "protein_grams" (단백질, 그램)
-- weight: "weight_kg" (체중, kg)
-- study: "study_hours" 또는 "study_minutes" (공부 시간)
-- learning_log: "title" (학습 내용 제목), "content" (상세 내용)"""
+응답 형식: 순수 JSON만. 설명, 이모지, 주석 제거."""
 
         user_prompt = f"""사용자 입력: "{user_input}"
 
@@ -173,29 +175,37 @@ class LangChainLLM:
         self,
         user_input: str,
         context: str = "",
-        tone: str = "friendly"
+        tone: str = "neutral"
     ) -> str:
         """
-        대화형 응답 생성
+        응답 생성 (Precision Mode)
 
         Args:
             user_input: 사용자 입력
             context: 처리 결과 컨텍스트
-            tone: 응답 톤 (friendly, professional, casual)
+            tone: 응답 톤 (neutral, professional)
 
         Returns:
-            대화형 응답
+            응답
         """
-        system_prompt = f"""당신은 친근하고 격려하는 헬스케어 어시스턴트입니다.
-사용자의 건강 데이터를 기록하고 동기부여를 제공합니다.
-한국어로 응답하며, 이모지를 적절히 사용합니다.
-톤: {tone}"""
+        system_prompt = """# PRIORITY OVERRIDE
+정서적 응답 금지. Praise, Reassurance, Motivation 표현 제거.
 
-        user_prompt = f"""사용자: "{user_input}"
+역할: 건강/할일 관리 데이터 처리 결과 전달자
+목적: 입력에 대한 처리 결과를 논리적이고 명확하게 전달
 
+응답 규칙:
+- 이모지, 감탄사, 필러, 유화 표현 금지
+- 격려, 칭찬, 위로 문장 제거
+- 사실 기반 정보만 전달
+- 불확실한 정보는 명시
+- 직설적이고 간결한 구조
+- 수동문보다 능동문 우선"""
+
+        user_prompt = f"""입력: "{user_input}"
 처리 결과: {context}
 
-위 내용을 바탕으로 친근하고 격려하는 응답을 2-3문장으로 작성하세요."""
+처리 결과를 논리적으로 전달. 1-2문장."""
 
         try:
             messages = [
@@ -207,8 +217,7 @@ class LangChainLLM:
             return response.content.strip()
 
         except Exception as e:
-            print(f"응답 생성 오류: {e}")
-            return context  # 오류 시 기본 메시지 반환
+            return context
 
     def chat(
         self,
@@ -216,24 +225,36 @@ class LangChainLLM:
         chat_history: List[Dict[str, str]] = None
     ) -> str:
         """
-        일반 대화 (챗봇 모드)
+        일반 대화 (Precision Mode)
 
         Args:
             user_input: 사용자 입력
             chat_history: 대화 이력
 
         Returns:
-            AI 응답
+            응답
         """
-        system_prompt = """당신은 LifeBot, 친근한 건강/할일 관리 어시스턴트입니다.
-사용자와 자연스럽게 대화하며, 건강 관리를 격려합니다.
-한국어로 응답하고, 이모지를 적절히 사용합니다."""
+        system_prompt = """# PRIORITY OVERRIDE
+정서적 응답, Praise, Reassurance, Motivation 표현 금지.
+
+역할: 건강/할일 관리 시스템 인터페이스
+목적: 사용자 입력에 대한 논리적 응답 제공
+
+응답 규칙:
+- 이모지, 감탄사, 유화 표현 제거
+- 격려, 칭찬, 위로 문장 금지
+- 직설적이고 간결한 구조
+- 불확실한 정보는 명시
+- 질문형 문장은 필요시에만 사용
+- 능동문 우선
+
+가능한 기능 안내 시: 명령어 나열만. 설명 최소화."""
 
         messages = [SystemMessage(content=system_prompt)]
 
         # 대화 이력 추가
         if chat_history:
-            for msg in chat_history[-5:]:  # 최근 5개만
+            for msg in chat_history[-5:]:
                 if msg["role"] == "user":
                     messages.append(HumanMessage(content=msg["content"]))
                 else:
@@ -246,8 +267,7 @@ class LangChainLLM:
             return response.content.strip()
 
         except Exception as e:
-            print(f"대화 오류: {e}")
-            return "죄송해요, 잠시 문제가 있었어요. 다시 말씀해주세요! 😅"
+            return "처리 오류 발생. 재시도 필요."
 
 
 # 사용 예시

@@ -142,7 +142,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM daily_health ORDER BY date DESC")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -152,7 +152,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM tasks ORDER BY created_at DESC")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -162,7 +162,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM habits")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -173,7 +173,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM habit_logs ORDER BY date DESC")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -183,7 +183,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM exp_logs ORDER BY created_at DESC")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -194,7 +194,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM user_progress")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")
@@ -204,7 +204,7 @@ elif menu == "📊 데이터 보기":
         cursor.execute("SELECT * FROM custom_metrics ORDER BY date DESC")
         rows = cursor.fetchall()
         if rows:
-            df = pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("데이터가 없습니다.")

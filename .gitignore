@@ -5,3 +5,6 @@ nohup.out
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Streamlit secrets (로컬 개발용)
+.streamlit/secrets.toml

@@ -127,7 +127,21 @@ pip install supabase
 2. **흔한 에러**:
    - `ModuleNotFoundError`: requirements.txt에 패키지 추가
    - `OPENAI_API_KEY not found`: Secrets 설정 확인
+   - `sqlite3.OperationalError`: 데이터베이스 초기화 문제 (최신 코드로 자동 해결)
    - `Port already in use`: 자동 해결됨 (재시작)
+
+### Main file path 오류 (중요!)
+
+에러: `interfaces/main.py`를 실행하려고 할 때
+
+**해결 방법**:
+1. Streamlit Cloud 대시보드에서 앱 선택
+2. **Settings** (톱니바퀴 아이콘) 클릭
+3. **Main file path**를 `interfaces/app.py`로 수정
+4. **Save** 클릭
+5. 앱이 자동으로 재시작됩니다
+
+`main.py`는 CLI 모드이고, `app.py`가 웹 대시보드입니다!
 
 ### 앱이 느릴 때
 

@@ -39,6 +39,17 @@ if 'db' not in st.session_state:
     st.session_state.db = Database()
     st.session_state.db.connect()
 
+    # 데이터베이스 스키마 확인 및 초기화
+    try:
+        cursor = st.session_state.db.conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_progress'")
+        if not cursor.fetchone():
+            # 테이블이 없으면 스키마 초기화
+            st.session_state.db.init_schema()
+            st.session_state.db.seed_initial_data()
+    except Exception as e:
+        st.error(f"데이터베이스 초기화 중 오류: {e}")
+
 if 'orchestrator' not in st.session_state:
     # LLM 클라이언트 초기화
     try:

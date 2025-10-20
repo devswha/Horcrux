@@ -16,6 +16,9 @@ load_dotenv()
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
+from core.database import Database
+from core.rag_manager import RAGManager
+
 
 class SimpleLLM:
     """간단하고 유연한 LLM 기반 시스템"""
@@ -34,6 +37,16 @@ class SimpleLLM:
             temperature=0.7,
             api_key=api_key
         )
+
+        # RAG 초기화 (대화 메모리 + 벡터 검색)
+        try:
+            db_wrapper = Database()
+            db_wrapper.conn = db_conn
+            db_wrapper.db_type = 'postgres' if os.getenv("SUPABASE_URL") else 'sqlite'
+            self.rag = RAGManager(db_wrapper)
+        except Exception as e:
+            print(f"⚠️  RAG 초기화 실패: {e}")
+            self.rag = None
 
     def process(self, user_input: str, chat_history: Optional[List[Dict]] = None) -> str:
         """
@@ -58,6 +71,14 @@ class SimpleLLM:
 
             # 3단계: LLM 응답 생성
             response = self._generate_response(user_input, results, parsed)
+
+            # 4단계: 대화 저장 (RAG)
+            if self.rag:
+                try:
+                    self.rag.save_conversation('user', user_input)
+                    self.rag.save_conversation('assistant', response)
+                except Exception as e:
+                    print(f"⚠️  대화 저장 실패: {e}")
 
             return response
 
@@ -523,7 +544,7 @@ class SimpleLLM:
         }
 
     def _query_memory(self, entities: Dict) -> Dict:
-        """메모리 검색"""
+        """메모리 검색 (RAG 기반)"""
         query = entities.get("query")
         memory_type = entities.get("type")
 
@@ -532,6 +553,23 @@ class SimpleLLM:
 
         cursor = self.conn.cursor()
         results = {}
+
+        # RAG 기반 대화 검색 (최우선)
+        if self.rag:
+            try:
+                conversations = self.rag.search_similar_conversations(query, top_k=5)
+                if conversations:
+                    results["conversations"] = [
+                        {
+                            "role": conv["role"],
+                            "content": conv["content"][:200],
+                            "timestamp": str(conv["timestamp"]),
+                            "similarity": round(conv["similarity"], 3)
+                        }
+                        for conv in conversations
+                    ]
+            except Exception as e:
+                print(f"⚠️  RAG 검색 실패: {e}")
 
         # 사람 검색
         if not memory_type or memory_type == "people":

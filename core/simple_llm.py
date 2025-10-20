@@ -119,13 +119,17 @@ class SimpleLLM:
 - study: study_hours (숫자)
 - protein: protein_grams (숫자)
 - weight: weight_kg (숫자)
-- task_add: task_title (문자열), due_date (선택), priority (선택)
+- task_add: task_title (문자열), due_date (선택), priority (선택, 값: 'low'/'normal'/'high'/'urgent')
 - remember_person: name, relationship_type, tags (리스트), notes
 - remember_interaction: person_name, type, summary, date
 - remember_knowledge: title, content, category
 - query_memory: query, type (people/knowledge/interactions)
 - learning_log: title, content
 - reflect: content, topic, mood
+
+**중요 제약**:
+- priority는 반드시 'low', 'normal', 'high', 'urgent' 중 하나
+- 약속/이벤트도 task_add로 처리, priority는 생략하거나 'normal' 사용
 """
 
         user_prompt = f"""사용자 입력: "{user_input}"
@@ -359,6 +363,11 @@ class SimpleLLM:
 
         if not title:
             return {"success": False, "error": "할일 제목이 필요합니다"}
+
+        # priority 값 검증 및 정규화
+        valid_priorities = ['low', 'normal', 'high', 'urgent']
+        if priority not in valid_priorities:
+            priority = "normal"  # 유효하지 않으면 기본값
 
         cursor = self.conn.cursor()
         cursor.execute("""

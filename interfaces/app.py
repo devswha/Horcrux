@@ -95,6 +95,10 @@ with st.sidebar:
         st.write(f"**DB 타입**: {st.session_state.db.db_type}")
         st.write(f"**RAG 활성화**: {st.session_state.agent.rag is not None if 'agent' in st.session_state else 'N/A'}")
 
+        # PostgreSQL 연결 에러 표시
+        if st.session_state.db.connection_error:
+            st.error(f"**PostgreSQL 연결 실패**: {st.session_state.db.connection_error}")
+
         # 환경 변수 확인
         env_status = {
             "OPENAI_API_KEY": "✅" if os.getenv("OPENAI_API_KEY") else "❌",

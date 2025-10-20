@@ -31,6 +31,7 @@ class Database:
         self.db_path = db_path
         self.conn: Optional[Union[sqlite3.Connection, 'psycopg2.connection']] = None
         self.db_type = None  # 'sqlite' or 'postgres'
+        self.connection_error = None  # PostgreSQL 연결 에러 저장
 
     def connect(self) -> Union[sqlite3.Connection, 'psycopg2.connection']:
         """데이터베이스 연결 (환경에 따라 SQLite 또는 PostgreSQL)"""
@@ -47,12 +48,20 @@ class Database:
                     cursor_factory=RealDictCursor
                 )
                 self.db_type = 'postgres'
+                self.connection_error = None
                 print("✓ PostgreSQL (Supabase) 연결 성공")
             except Exception as e:
+                self.connection_error = str(e)
                 print(f"⚠ PostgreSQL 연결 실패, SQLite로 fallback: {e}")
                 self._connect_sqlite()
         else:
             # SQLite 연결 (로컬 개발)
+            if not POSTGRES_AVAILABLE:
+                self.connection_error = "psycopg2 not installed"
+            elif not supabase_url:
+                self.connection_error = "SUPABASE_URL not set"
+            elif not supabase_key:
+                self.connection_error = "SUPABASE_KEY not set"
             self._connect_sqlite()
 
         return self.conn

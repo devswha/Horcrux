@@ -37,20 +37,35 @@ if 'db' not in st.session_state:
     # 데이터베이스 스키마 확인 및 초기화
     try:
         cursor = st.session_state.db.conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_progress'")
+
+        # PostgreSQL과 SQLite 모두 지원
+        if st.session_state.db.db_type == 'postgres':
+            cursor.execute("""
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'user_progress'
+            """)
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_progress'")
+
         if not cursor.fetchone():
             # 테이블이 없으면 스키마 초기화
+            print("📝 Initializing database schema...")
             st.session_state.db.init_schema()
             st.session_state.db.seed_initial_data()
+            print("✅ Database schema initialized!")
     except Exception as e:
+        print(f"❌ Database initialization error: {e}")
         st.error(f"데이터베이스 초기화 중 오류: {e}")
 
 if 'agent' not in st.session_state:
     # SimpleLLM 초기화
     try:
+        print("🤖 Initializing SimpleLLM...")
         st.session_state.agent = SimpleLLM(st.session_state.db.conn)
         st.session_state.llm_status = "✅ SimpleLLM 활성화 (GPT-4o-mini)"
+        print(f"✅ SimpleLLM initialized! RAG: {st.session_state.agent.rag is not None}")
     except Exception as e:
+        print(f"❌ SimpleLLM initialization failed: {e}")
         st.error(f"SimpleLLM 초기화 실패: {str(e)}")
         st.session_state.llm_status = f"⚠️ SimpleLLM 오류: {str(e)}"
         st.stop()

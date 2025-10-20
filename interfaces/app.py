@@ -31,6 +31,12 @@ st.set_page_config(
 
 # 세션 상태 초기화
 if 'db' not in st.session_state:
+    # Streamlit Cloud secrets를 환경 변수로 설정
+    if hasattr(st, 'secrets'):
+        for key in ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_KEY']:
+            if key in st.secrets:
+                os.environ[key] = st.secrets[key]
+
     st.session_state.db = Database()
     st.session_state.db.connect()
 

@@ -13,18 +13,18 @@
 
 ### ✅ 정상 작동
 1. **웹 애플리케이션**: Streamlit 앱 정상 접속
-2. **데이터베이스 연결**: PostgreSQL (Supabase) 연결 성공
-3. **기본 데이터 저장**: 건강, 할일, 인물 정보 저장 작동
-4. **SimpleLLM**: GPT-4o-mini 파싱 및 응답 생성 작동
-5. **데이터베이스 스키마**: 13개 테이블 모두 생성 완료
-6. **pgvector Extension**: v0.8.0 활성화 완료
-7. **HNSW Index**: conversation_memory_embedding_idx 생성 완료
+2. **데이터베이스 스키마**: 13개 테이블 모두 생성 완료 (Supabase)
+3. **pgvector Extension**: v0.8.0 활성화 완료
+4. **HNSW Index**: conversation_memory_embedding_idx 생성 완료
+5. **SimpleLLM**: GPT-4o-mini 파싱 및 응답 생성 작동 (SQLite fallback)
+6. **기본 데이터 저장**: 건강, 할일, 인물 정보 저장 작동 (로컬 SQLite)
 
 ### ❌ 미작동 (수정 필요)
-1. **RAG 시스템**: OPENAI_API_KEY 미설정으로 비활성화
-2. **벡터 임베딩 생성**: 임베딩 서비스 초기화 실패
-3. **유사도 검색**: 벡터 검색 불가
-4. **맥락 기반 응답**: "그 사람 누구야?" 같은 모호한 질문 처리 불가
+1. **PostgreSQL 연결 실패**: IPv6 주소 연결 불가 (Streamlit Cloud 제약)
+2. **RAG 시스템**: PostgreSQL 연결 실패로 비활성화
+3. **벡터 임베딩 생성**: 임베딩 서비스 초기화 실패
+4. **유사도 검색**: 벡터 검색 불가
+5. **맥락 기반 응답**: "그 사람 누구야?" 같은 모호한 질문 처리 불가
 
 ---
 
@@ -44,23 +44,39 @@
 
 ## 해결 방법
 
+### 근본 원인: IPv6 연결 불가
+
+**문제**: Streamlit Cloud는 IPv6를 지원하지 않음
+**증상**: `connection to server at "db.hfaucafjyxyrzhhlcyvy.supabase.co" (2406:da12:...), port 5432 failed: Cannot assign requested address`
+
+**해결책**: Supabase Connection Pooler 사용 (IPv4 전용)
+
 ### 즉시 수정 필요
 
-**Streamlit Cloud Secrets 설정**:
+**Streamlit Cloud Secrets 업데이트**:
 
 1. https://share.streamlit.io/ 접속
 2. Horcrux 앱 선택 → Settings → Secrets
-3. 다음 내용 추가:
+3. `SUPABASE_URL` 교체:
 
 ```toml
-OPENAI_API_KEY = "sk-..."
-
+# 기존 (IPv6 - 실패)
 SUPABASE_URL = "postgresql://postgres:devswha1%21@db.hfaucafjyxyrzhhlcyvy.supabase.co:5432/postgres"
+
+# 새로운 (Pooler - IPv4 전용)
+SUPABASE_URL = "postgresql://postgres.hfaucafjyxyrzhhlcyvy:devswha1%21@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
+
 SUPABASE_KEY = "eyJhbGci..."
+OPENAI_API_KEY = "sk-..."
 ```
 
+**변경 사항**:
+- **호스트**: `db.xxx.supabase.co` → `aws-0-ap-northeast-2.pooler.supabase.com`
+- **포트**: `5432` → `6543`
+- **사용자명**: `postgres` → `postgres.hfaucafjyxyrzhhlcyvy`
+
 4. Save → 앱 자동 재시작
-5. 테스트 재실행
+5. 디버그 패널 확인: "DB 타입: postgres" ✅
 
 ---
 
@@ -142,6 +158,9 @@ SUPABASE_KEY = "eyJhbGci..."
 
 🟢 **인프라**: 100% 완료 (PostgreSQL + pgvector)
 🟢 **애플리케이션**: 95% 완료 (SimpleLLM + 기본 기능)
-🔴 **RAG 시스템**: 0% 작동 (OPENAI_API_KEY 필요)
+🔴 **데이터베이스 연결**: IPv6 문제로 PostgreSQL 미연결
+🔴 **RAG 시스템**: 0% 작동 (PostgreSQL 연결 필요)
 
-**한 줄 요약**: OPENAI_API_KEY만 추가하면 완전 작동! 🚀
+**한 줄 요약**: SUPABASE_URL을 Connection Pooler로 변경하면 완전 작동! 🚀
+
+**상세 문서**: STREAMLIT_CLOUD_IPv6_FIX.md 참조

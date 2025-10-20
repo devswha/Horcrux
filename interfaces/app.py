@@ -96,7 +96,7 @@ with st.sidebar:
         st.write(f"**RAG 활성화**: {st.session_state.agent.rag is not None if 'agent' in st.session_state else 'N/A'}")
 
         # PostgreSQL 연결 에러 표시
-        if st.session_state.db.connection_error:
+        if hasattr(st.session_state.db, 'connection_error') and st.session_state.db.connection_error:
             st.error(f"**PostgreSQL 연결 실패**: {st.session_state.db.connection_error}")
 
         # 환경 변수 확인

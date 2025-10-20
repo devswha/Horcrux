@@ -90,6 +90,32 @@ with st.sidebar:
     if 'llm_status' in st.session_state:
         st.info(st.session_state.llm_status)
 
+    # 디버그 정보
+    with st.expander("🔍 디버그 정보"):
+        st.write(f"**DB 타입**: {st.session_state.db.db_type}")
+        st.write(f"**RAG 활성화**: {st.session_state.agent.rag is not None if 'agent' in st.session_state else 'N/A'}")
+
+        # 환경 변수 확인
+        env_status = {
+            "OPENAI_API_KEY": "✅" if os.getenv("OPENAI_API_KEY") else "❌",
+            "SUPABASE_URL": "✅" if os.getenv("SUPABASE_URL") else "❌",
+            "SUPABASE_KEY": "✅" if os.getenv("SUPABASE_KEY") else "❌",
+        }
+        st.write("**환경 변수**:")
+        for key, status in env_status.items():
+            st.write(f"  {status} {key}")
+
+        # Streamlit secrets 확인
+        if hasattr(st, 'secrets'):
+            secrets_status = {
+                "OPENAI_API_KEY": "✅" if "OPENAI_API_KEY" in st.secrets else "❌",
+                "SUPABASE_URL": "✅" if "SUPABASE_URL" in st.secrets else "❌",
+                "SUPABASE_KEY": "✅" if "SUPABASE_KEY" in st.secrets else "❌",
+            }
+            st.write("**Streamlit Secrets**:")
+            for key, status in secrets_status.items():
+                st.write(f"  {status} {key}")
+
     st.markdown("---")
 
     # 메뉴

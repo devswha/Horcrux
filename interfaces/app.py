@@ -18,12 +18,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from core.database import Database
-from core.llm_client import LLMClientFactory
-from agents.conversation import ConversationAgent
-from agents.data_manager import DataManagerAgent
-from agents.gamification import GamificationAgent
-from agents.coaching import CoachingAgent
-from agents.orchestrator import OrchestratorAgent
+from core.simple_llm import SimpleLLM
 
 
 # 페이지 설정
@@ -50,28 +45,15 @@ if 'db' not in st.session_state:
     except Exception as e:
         st.error(f"데이터베이스 초기화 중 오류: {e}")
 
-if 'orchestrator' not in st.session_state:
-    # LLM 클라이언트 초기화
+if 'agent' not in st.session_state:
+    # SimpleLLM 초기화
     try:
-        llm_client = LLMClientFactory.create()
-        if llm_client:
-            st.session_state.llm_status = "✅ LLM 활성화"
-        else:
-            st.session_state.llm_status = "⚠️ LLM 비활성화"
+        st.session_state.agent = SimpleLLM(st.session_state.db.conn)
+        st.session_state.llm_status = "✅ SimpleLLM 활성화 (GPT-4o-mini)"
     except Exception as e:
-        llm_client = None
-        st.session_state.llm_status = f"⚠️ LLM 오류: {str(e)}"
-
-    # 에이전트 초기화 (LLM 클라이언트 전달)
-    conversation = ConversationAgent(llm_client=llm_client)
-    data_manager = DataManagerAgent(st.session_state.db.conn)
-    gamification = GamificationAgent(st.session_state.db.conn)
-    coaching = CoachingAgent(st.session_state.db.conn)
-    st.session_state.orchestrator = OrchestratorAgent(
-        conversation, data_manager, gamification, coaching, llm_client=llm_client
-    )
-    st.session_state.data_manager = data_manager
-    st.session_state.gamification = gamification
+        st.error(f"SimpleLLM 초기화 실패: {str(e)}")
+        st.session_state.llm_status = f"⚠️ SimpleLLM 오류: {str(e)}"
+        st.stop()
 
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
@@ -121,11 +103,9 @@ if menu == "💬 채팅":
             'content': user_input
         })
 
-        # 처리
-        result = st.session_state.orchestrator.handle_user_input(user_input)
-
-        # 응답 메시지 추가
-        response = result.get('message', '처리 완료')
+        # SimpleLLM 처리
+        with st.spinner('처리 중...'):
+            response = st.session_state.agent.process(user_input, st.session_state.chat_history)
         st.session_state.chat_history.append({
             'role': 'assistant',
             'content': response
@@ -138,12 +118,15 @@ elif menu == "📊 데이터 보기":
     st.header("📊 저장된 데이터")
 
     # 데이터 테이블 탭
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "💤 건강 데이터",
         "📝 할일",
         "🎯 습관",
         "💎 경험치",
-        "📊 기타"
+        "📊 기타",
+        "👥 인물 정보",
+        "🤝 상호작용",
+        "📚 지식/회고"
     ])
 
     cursor = st.session_state.db.conn.cursor()
@@ -220,7 +203,54 @@ elif menu == "📊 데이터 보기":
         else:
             st.info("데이터가 없습니다.")
 
+    with tab6:
+        st.subheader("👥 인물 정보 (people)")
+        cursor.execute("SELECT * FROM people ORDER BY importance_score DESC, name")
+        rows = cursor.fetchall()
+        if rows:
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("데이터가 없습니다.")
+
+    with tab7:
+        st.subheader("🤝 상호작용 로그 (interactions)")
+        cursor.execute("""
+            SELECT i.id, p.name as person_name, i.date, i.type,
+                   i.summary, i.sentiment, i.location, i.duration_min
+            FROM interactions i
+            JOIN people p ON i.person_id = p.id
+            ORDER BY i.date DESC
+        """)
+        rows = cursor.fetchall()
+        if rows:
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("데이터가 없습니다.")
+
+    with tab8:
+        st.subheader("📚 지식 저장소 (knowledge_entries)")
+        cursor.execute("SELECT * FROM knowledge_entries ORDER BY learned_date DESC")
+        rows = cursor.fetchall()
+        if rows:
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("데이터가 없습니다.")
+
+        st.markdown("---")
+
+        st.subheader("💭 회고/성찰 (reflections)")
+        cursor.execute("SELECT * FROM reflections ORDER BY date DESC")
+        rows = cursor.fetchall()
+        if rows:
+            df = pd.DataFrame([{key: row[key] for key in row.keys()} for row in rows])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("데이터가 없습니다.")
+
 
 # Footer
 st.markdown("---")
-st.caption("Horcrux v2.0 - Phase 4 (Web UI)")
+st.caption("Horcrux v2.0 - Phase 5A (Memory System)")

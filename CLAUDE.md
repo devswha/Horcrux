@@ -50,123 +50,130 @@ pip install -r requirements.txt
 
 ## Architecture
 
-### Multi-Agent System
+### SimpleLLM System
 
-The system uses 5 specialized agents that communicate through the OrchestratorAgent:
+**SimpleLLM** (`core/simple_llm.py`) is the core of Horcrux - a single, clean orchestrator that uses LLM for everything:
 
-1. **OrchestratorAgent** (`agents/orchestrator.py`)
-   - Routes user input to appropriate agents
-   - Coordinates agent communication
-   - Combines responses for user
-   - Error handling and fallback logic
+**Design Philosophy**:
+- ✅ **100% LLM-driven**: Both parsing AND response generation use GPT-4o-mini
+- ✅ **No rule-based logic**: Flexible, natural language understanding
+- ✅ **All-in-one**: Single class with DB helper methods (~700 lines)
+- ✅ **No gamification**: Removed XP/levels for simplicity
 
-2. **ConversationAgent** (`agents/conversation.py`)
-   - **LLM-only parsing** - No regex fallback
-   - Uses LangChain + GPT-4o-mini for Korean NLU
-   - Handles complex multi-intent commands (e.g., "어제 5시간 자고 30분 운동했어")
-   - Supports learning logs, sleep pattern calculations, task extraction
-   - Maintains conversation history for context
+**Architecture**:
+```python
+class SimpleLLM:
+    def process(user_input) -> str:
+        # 1. LLM Parsing (with current time context)
+        parsed = _parse_with_llm(user_input)
 
-3. **DataManagerAgent** (`agents/data_manager.py`)
-   - SQLite database CRUD operations
-   - Data validation and integrity checks
-   - Statistics aggregation (daily/weekly/monthly)
-   - Manages 9 tables: daily_health, custom_metrics, habits, habit_logs, tasks, user_progress, exp_logs, achievements, achievement_logs
+        # 2. Execute DB operations
+        results = _execute(parsed)  # Routes to helper methods
 
-4. **CoachingAgent** (`agents/coaching.py`)
-   - Health pattern analysis and monitoring
-   - Alert rule checking (sleep < 6h, 3-day streaks, etc.)
-   - Personalized advice and encouragement
-   - Milestone celebrations
+        # 3. LLM Response Generation
+        response = _generate_response(user_input, results)
 
-5. **GamificationAgent** (`agents/gamification.py`)
-   - XP calculation and awarding
-   - Level-up system (quadratic formula: 100 * N * (N-1) / 2)
-   - Achievement tracking (20 achievements)
-   - Progress summaries and motivation messages
+        return response
+```
+
+**Key Features**:
+1. **Time-aware parsing**: Includes current time for accurate "지금" (now) calculations
+2. **Multi-intent**: Handles compound commands (e.g., "7시간 자고 30분 운동")
+3. **15+ DB helpers**: sleep, workout, study, person, interaction, knowledge, etc.
+4. **Natural responses**: LLM generates friendly Korean responses (no templates)
 
 ### Message Flow Example
 
 ```
 User: "어제 5시간 자고 30분 운동했어"
   ↓
-OrchestratorAgent (routes)
+SimpleLLM._parse_with_llm() → LLM parses to JSON:
+  [
+    {intent: "sleep", entities: {sleep_hours: 5, date: "2025-10-16"}},
+    {intent: "workout", entities: {workout_minutes: 30, date: "2025-10-16"}}
+  ]
   ↓
-ConversationAgent (LLM parses)
-  → Returns: [
-      {intent: "sleep", entities: {sleep_hours: 5, date: "어제"}},
-      {intent: "workout", entities: {workout_minutes: 30, date: "어제"}}
-    ]
+SimpleLLM._execute() → Calls DB helpers:
+  _store_sleep() → INSERT INTO daily_health (date, sleep_h) VALUES (...)
+  _store_workout() → INSERT INTO daily_health (date, workout_min) VALUES (...)
   ↓
-DataManagerAgent (stores to DB)
+SimpleLLM._generate_response() → LLM generates response:
+  "5시간 주무셨군요. 목표인 7시간보다 2시간 부족합니다. 💤
+   30분 운동하셨어요! 목표 달성입니다. 계속 이어가세요! 💪"
   ↓
-CoachingAgent (generates alerts)
-  → Sleep: "⚠️ 목표보다 2시간 부족"
-  → Workout: "✓ 목표 달성!"
-  ↓
-GamificationAgent (awards XP)
-  → Sleep: 0 XP (below target)
-  → Workout: +10 XP
-  ↓
-OrchestratorAgent (combines response)
+Return to user
 ```
+
+**Note**: No coaching rules, no XP calculation - LLM handles everything naturally!
 
 ### LLM Integration
 
-**LangChain + OpenAI** (`core/langchain_llm.py`)
-- Model: GPT-4o-mini (cost-effective)
-- JSON output parsing with structured prompts
-- Handles complex Korean expressions and time calculations
-- No regex fallback - LLM is primary parser
+**SimpleLLM uses LangChain + OpenAI** (`core/simple_llm.py`):
+- Model: GPT-4o-mini (cost-effective, fast)
+- **Dual LLM usage**: Parsing (JSON) + Response generation (natural language)
+- Current time context for accurate "지금" calculations
+- No regex fallback - 100% LLM
 
-**Key prompts:**
-- Intent classification: sleep, workout, protein, weight, task_add, task_complete, study, learning_log, summary, progress, chat
-- Complex sleep pattern calculation (e.g., "11시에 잤다가 3시에 깨서 다시 8시에 자서 2시에 일어났어" → 10 hours total)
-- Entity extraction with strict key naming (task_title, sleep_hours, workout_minutes, etc.)
+**Supported intents**:
+- Health: sleep, workout, study, protein, weight
+- Tasks: task_add, task_complete
+- Memory: remember_person, remember_interaction, remember_knowledge, query_memory
+- Other: reflect, summary, chat
+
+**Key features**:
+- Entity extraction with strict naming (sleep_hours, workout_minutes, task_title, etc.)
+- Complex time calculations ("오후 3시부터 지금까지" with current_time context)
+- Multi-intent parsing (handles "X하고 Y했어" compound commands)
 
 ### Database Schema
 
-9 tables in SQLite (`horcrux.db`):
+**12 tables in SQLite** (`horcrux.db`):
 - `daily_health`: Core health metrics (sleep_h, workout_min, protein_g, weight_kg)
-- `custom_metrics`: Flexible metrics (BMI, blood pressure, etc.)
+- `custom_metrics`: Flexible metrics (study hours, etc.)
 - `habits` / `habit_logs`: Habit tracking with streak counts
 - `tasks`: Task management with status/priority
-- `user_progress`: Level and XP tracking
-- `exp_logs`: XP transaction history
-- `achievements` / `achievement_logs`: 20 achievements with conditions
+- `people`: Personal relationships and contacts (Phase 5A)
+- `interactions`: Interaction logs with people (Phase 5A)
+- `knowledge_entries`: Knowledge repository (Phase 5A)
+- `learning_logs`: Learning content tracking
+- `reflections`: Daily/weekly reflections (Phase 5A)
+- `conversation_memory`: Chat history
+
+**Removed** (no longer needed):
+- ❌ `user_progress`, `exp_logs`, `achievements`, `achievement_logs` (gamification removed)
 
 ### Configuration
 
-**config.yaml:**
-- Health targets (sleep: 7h, workout: 30min, protein: 100g)
-- XP rules with priority multipliers
-- LLM settings (provider: "langchain", strategy: "fallback")
-- Alert thresholds
-
 **Environment variables (.env):**
-- `OPENAI_API_KEY`: Required for LangChain integration
-- `ANTHROPIC_API_KEY`: Optional (if switching to Claude)
+- `OPENAI_API_KEY`: **Required** for SimpleLLM (GPT-4o-mini)
+- Database: `horcrux.db` (SQLite, auto-created)
 
 ## Development Guidelines
 
-### Testing Strategy
-
-- **Unit tests**: Individual agent functionality
-- **Parser tests**: 100+ Korean expression examples
-- **Integration tests**: Full flow from input → parse → store → alert → XP → response
-
 ### Adding New Intents
 
-1. Update LangChain prompt in `core/langchain_llm.py` (line 59-99)
-2. Add handler in `OrchestratorAgent.process()`
-3. Implement entity extraction logic
-4. Add test cases in `tests/test_parsers/`
+To add a new intent to SimpleLLM:
 
-### Adding New Achievements
+1. **Update parsing prompt** in `core/simple_llm.py` (_parse_with_llm method):
+   - Add new intent to the list (e.g., "medication: 약 복용 기록")
+   - Add entity key names (e.g., "medication: medication_name, dosage, time")
 
-1. Define achievement in `core/database.py` seed data (20 achievements)
-2. Implement check logic in `agents/gamification.py`
-3. Set condition_type and condition_value (JSON)
+2. **Add DB helper method**:
+   ```python
+   def _store_medication(self, entities: Dict) -> Dict:
+       name = entities.get("medication_name")
+       dosage = entities.get("dosage")
+       # ... DB insert logic
+       return {"success": True, "message": f"{name} 기록"}
+   ```
+
+3. **Add router case** in `_execute()`:
+   ```python
+   elif intent == "medication":
+       result = self._store_medication(entities)
+   ```
+
+4. **Test**: "오늘 아스피린 100mg 먹었어" → should record medication
 
 ### Korean NLP Patterns
 
@@ -178,32 +185,257 @@ The system understands:
 
 ### Common Pitfalls
 
-1. **LLM dependency**: The system requires OPENAI_API_KEY. Without it, ConversationAgent will fail.
-2. **Entity key names**: Must match exactly (task_title not title, sleep_hours not hours)
-3. **Database state**: Run `python3 core/database.py` to reset/initialize DB with seed data
-4. **Streamlit caching**: May need to clear cache when testing web UI changes
+1. **OPENAI_API_KEY required**: SimpleLLM will fail to initialize without this env variable
+2. **Entity key naming**: Must match exactly (sleep_hours not hours, task_title not title)
+3. **Time calculation**: SimpleLLM includes current time context - test "지금" expressions carefully
+4. **JSON parsing**: LLM must output valid JSON. Markdown code blocks are stripped automatically
+5. **Streamlit caching**: May need to clear cache or restart server after code changes
 
 ### File Organization
 
 ```
 Horcrux/
-├── agents/          # 5 agents + base_agent.py
-├── core/            # database.py, langchain_llm.py, llm_client.py, config.py
-├── parsers/         # Legacy regex parsers (not actively used)
-├── interfaces/      # main.py (CLI), main_natural.py (chat), app.py (Streamlit)
-├── tests/           # Unit and integration tests
-├── docs/            # Additional documentation (PROMPTS.md, WEB_UI_GUIDE.md, etc.)
-├── config.yaml      # Configuration
-├── .env.example     # Environment template
-├── horcrux.py       # Main entry point
-└── run.sh           # Execution script
+├── core/
+│   ├── simple_llm.py        # ⭐ Main system (SimpleLLM class)
+│   ├── database.py           # DB schema and initialization
+│   └── langchain_llm.py      # Legacy LLM wrapper (not actively used)
+├── interfaces/
+│   └── app.py                # ⭐ Streamlit web dashboard (uses SimpleLLM)
+├── _deprecated/
+│   └── agents/               # Old multi-agent files (backup)
+├── agents/                   # Empty (deprecated)
+├── tests/                    # Old tests (may need updates)
+├── .env                      # OPENAI_API_KEY
+├── horcrux.db                # SQLite database
+└── horcrux.py                # Main entry point
 ```
+
+**Active files**: `core/simple_llm.py` + `interfaces/app.py` + `core/database.py`
+
+## Project Vision
+
+### The True Horcrux Concept
+
+Inspired by Harry Potter's Horcruxes - objects that preserve a piece of one's soul - **Horcrux** is designed to be a **digital repository of "you"**:
+
+- **Complete Memory**: Store everything - learning, relationships, experiences, thoughts, insights
+- **AI-Powered Recall**: Use AI to find, connect, and utilize your past knowledge
+- **Digital Twin**: Build a comprehensive model of yourself that grows over time
+- **Context-Aware Intelligence**: AI that understands you based on your history
+
+**Core Philosophy**:
+- Humans forget, but Horcrux remembers
+- Data ownership and privacy (local-first)
+- AI as a partner that knows you deeply
+
+Current Phases 1-4 focus on health/task management. **Phase 5+ will transform Horcrux into a true "digital self" repository.**
 
 ## Phase Status
 
-✅ **Phase 1**: MVP (DB, DataManagerAgent, GamificationAgent, basic CLI)
-✅ **Phase 2**: Korean NLP (ConversationAgent, CoachingAgent, OrchestratorAgent, natural CLI)
-✅ **Phase 3**: LLM integration (LangChain + GPT-4o-mini, 20 achievements)
-✅ **Phase 4**: Web UI (Streamlit dashboard, charts with Plotly, achievement gallery)
+✅ **Phase 1-4**: Multi-agent system (DEPRECATED - replaced by SimpleLLM)
+✅ **Phase 5A**: Personal Memory System (people, interactions, knowledge, reflections)
+✅ **Phase 6**: **SimpleLLM Architecture** (2025-10-17)
+   - Removed multi-agent complexity → Single SimpleLLM class
+   - Removed gamification (XP/levels) for simplicity
+   - 100% LLM-driven (parsing + responses)
+   - Fixed time calculation bugs
+   - Natural Korean responses
 
-Current state: All phases complete. System is production-ready for personal use.
+**Current state**: SimpleLLM system fully operational. Streamlit web dashboard working.
+
+## Phase 5 Roadmap: Personal Knowledge & Memory System
+
+### Vision
+Transform Horcrux from a health/task tracker into a comprehensive "digital self" repository that stores and intelligently retrieves all personal information.
+
+### Phase 5A: Memory Foundation (1-2 weeks)
+**Goal**: Basic storage and retrieval of personal information
+
+**New Database Tables**:
+```sql
+-- People & Relationships
+people (
+  id, name, relationship_type, first_met_date,
+  tags JSON, personality_notes, contact_info,
+  importance_score (1-10), created_at, updated_at
+)
+
+-- Interaction Logs
+interactions (
+  id, person_id, date, type (meeting/call/message),
+  summary, sentiment (positive/neutral/negative),
+  topics JSON, location, duration_min, created_at
+)
+
+-- Knowledge Repository
+knowledge_entries (
+  id, title, content, source (book/article/course),
+  category, tags JSON, learned_date, confidence (1-5),
+  last_reviewed, created_at
+)
+
+-- Reflections & Insights
+reflections (
+  id, date, topic, content, mood,
+  insights JSON, related_events JSON, created_at
+)
+
+-- Conversation Memory
+conversation_memory (
+  id, session_id, role (user/assistant), content,
+  timestamp, context JSON
+)
+```
+
+**New Agent**:
+- `MemoryAgent`: Basic CRUD for all memory tables
+
+**New Intents** (ConversationAgent):
+- `remember_fact`: "민수는 개발자야" → people table
+- `remember_learning`: "오늘 React Hooks 배웠어" → knowledge_entries
+- `remember_interaction`: "어제 친구들이랑 놀았어" → interactions
+- `query_memory`: "민수에 대해 뭐 알고 있어?" → search memory
+- `reflect`: "이번 주 어땠어?" → generate reflection
+
+**Usage Examples**:
+```
+User: "민수는 내 대학 친구야. 개발자고 커피를 좋아해"
+→ MemoryAgent creates person + tags
+
+User: "민수에 대해 뭐 알고 있어?"
+→ MemoryAgent retrieves: "민수는 대학 친구이며 개발자입니다. 커피를 좋아합니다."
+```
+
+### Phase 5B: Semantic Search (2-3 weeks)
+**Goal**: Find relevant memories based on context, not just keywords
+
+**New Dependencies**:
+- `chromadb`: Vector database (local)
+- `openai` (embeddings): text-embedding-3-small
+
+**New Features**:
+1. Automatic embedding generation for all text content
+2. Semantic search: "작년에 비슷한 문제 있었을 때 어떻게 했지?" → vector search
+3. Context injection: Auto-load relevant memories at conversation start
+4. Smart summaries: LLM-powered summarization of long memory chains
+
+**Architecture**:
+- SQLite: Structured data (names, dates, relationships)
+- Chroma: Unstructured data (embeddings for semantic search)
+- Combined queries: SQL + vector search for best results
+
+**Cost**: ~$0.02/1M tokens for embeddings (very cheap)
+
+### Phase 5C: Relationship Graph (2 weeks)
+**Goal**: Visualize and analyze personal relationships
+
+**New Agent**:
+- `RelationshipAgent`: Manage people, interactions, relationship analysis
+
+**New Features**:
+1. Relationship network visualization (Plotly/Cytoscape)
+2. Interaction timeline per person
+3. Relationship insights:
+   - "You haven't contacted X in 2 months"
+   - "You meet Y most often on weekends"
+4. People directory with rich profiles
+
+**Web UI**:
+- New tab: "👥 인간관계"
+- Network graph (nodes = people, edges = interactions)
+- Person detail view with timeline
+
+### Phase 5D: Proactive Insights (3 weeks)
+**Goal**: AI that understands patterns and proactively helps
+
+**New Agent**:
+- `ReflectionAgent`: Pattern analysis, insights generation, proactive suggestions
+
+**New Features**:
+1. Weekly/monthly reflection prompts
+2. Pattern discovery:
+   - "You tend to skip workouts on Mondays"
+   - "You're most productive in the mornings"
+3. Knowledge review system (Spaced Repetition)
+4. Proactive reminders:
+   - "Today you're meeting X. Last time you discussed Y."
+5. Growth dashboard:
+   - Skills learned over time
+   - Relationship quality trends
+   - Achievement milestones
+
+**AI Techniques**:
+- Time-series analysis for behavior patterns
+- LLM-powered insight generation
+- Recommendation system for learning/review
+
+### Technical Architecture
+
+**Extended Agent System**:
+```
+User Input
+  ↓
+OrchestratorAgent
+  ↓
+ConversationAgent (parse intent)
+  ↓
+┌─────────────┬──────────────┬──────────────┬───────────────┐
+│MemoryAgent  │RelationAgent │KnowledgeAgent│ReflectionAgent│
+│(Phase 5A)   │(Phase 5C)    │(Phase 5B)    │(Phase 5D)     │
+└─────────────┴──────────────┴──────────────┴───────────────┘
+  ↓
+Response (with relevant context from memory)
+```
+
+**Memory Retrieval Flow**:
+1. User asks question
+2. MemoryAgent: Vector search for relevant memories
+3. SQL queries for structured data (dates, names)
+4. Combine results and inject into LLM context
+5. LLM generates contextual response
+
+**Data Privacy**:
+- Local-first: SQLite + Chroma run locally
+- Optional cloud backup (encrypted)
+- No data leaves your machine except API calls (OpenAI)
+- Export to JSON/Markdown anytime
+
+### Implementation Priority
+
+**Immediate (Phase 5A)**:
+1. Create new database tables
+2. Implement MemoryAgent basic CRUD
+3. Add new intents to ConversationAgent
+4. Test: "Remember X" → "What do you know about X?"
+
+**Next (Phase 5B)**:
+1. Integrate Chroma DB
+2. Embedding pipeline
+3. Semantic search
+
+**Later (Phase 5C + 5D)**:
+1. Relationship visualization
+2. Proactive insights
+3. Advanced analytics
+
+### Success Metrics
+
+Phase 5 is successful when:
+- ✅ User can store any information naturally ("Remember that...")
+- ✅ AI recalls relevant information at the right time
+- ✅ System feels like "an AI that knows me"
+- ✅ Privacy is maintained (local-first)
+- ✅ Data grows into a comprehensive "digital self"
+
+### Future Vision (Phase 6+)
+
+- Voice interface (whisper + TTS)
+- Mobile app (React Native + local sync)
+- Multi-modal memory (images, audio, video)
+- Collaborative memory (shared with family/team)
+- Export to other AI systems (ChatGPT, Claude)
+- Brain-computer interface integration (far future 😄)
+
+---
+
+**"Your life, remembered forever. Your AI, that truly knows you."**

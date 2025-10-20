@@ -10,6 +10,7 @@ from agents.conversation import ConversationAgent
 from agents.data_manager import DataManagerAgent
 from agents.gamification import GamificationAgent
 from agents.coaching import CoachingAgent
+from agents.memory import MemoryAgent
 
 
 class OrchestratorAgent(BaseAgent):
@@ -21,6 +22,7 @@ class OrchestratorAgent(BaseAgent):
         data_manager: DataManagerAgent,
         gamification: GamificationAgent,
         coaching: CoachingAgent,
+        memory_agent: MemoryAgent = None,
         llm_client=None
     ):
         super().__init__("Orchestrator")
@@ -29,6 +31,7 @@ class OrchestratorAgent(BaseAgent):
         self.data_manager = data_manager
         self.gamification = gamification
         self.coaching = coaching
+        self.memory = memory_agent  # Phase 5A: MemoryAgent
         self.llm = llm_client  # LLM 클라이언트
 
     def process(self, message: Dict[str, Any]) -> Dict[str, Any]:
@@ -126,6 +129,22 @@ class OrchestratorAgent(BaseAgent):
 
         elif intent == "chat":
             return self._handle_chat(entities)
+
+        # === Phase 5A: Memory Intents ===
+        elif intent == "remember_person":
+            return self._handle_remember_person(entities)
+
+        elif intent == "remember_interaction":
+            return self._handle_remember_interaction(entities)
+
+        elif intent == "remember_knowledge":
+            return self._handle_remember_knowledge(entities)
+
+        elif intent == "query_memory":
+            return self._handle_query_memory(entities)
+
+        elif intent == "reflect":
+            return self._handle_reflect(entities)
 
         else:
             return {
@@ -631,3 +650,140 @@ class OrchestratorAgent(BaseAgent):
         """
         # Precision Mode: 대화형 변환 비활성화. 기본 메시지 그대로 사용.
         return basic_message
+
+    # === Phase 5A: Memory Handlers ===
+
+    def _handle_remember_person(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """사람 정보 기억 처리"""
+        if not self.memory:
+            return {
+                "success": False,
+                "message": "메모리 기능이 활성화되지 않았습니다."
+            }
+
+        result = self.memory.process({
+            "action": "store_person",
+            "data": entities
+        })
+
+        return result
+
+    def _handle_remember_interaction(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """상호작용 기록 처리"""
+        if not self.memory:
+            return {
+                "success": False,
+                "message": "메모리 기능이 활성화되지 않았습니다."
+            }
+
+        result = self.memory.process({
+            "action": "store_interaction",
+            "data": entities
+        })
+
+        return result
+
+    def _handle_remember_knowledge(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """지식 저장 처리"""
+        if not self.memory:
+            return {
+                "success": False,
+                "message": "메모리 기능이 활성화되지 않았습니다."
+            }
+
+        result = self.memory.process({
+            "action": "store_knowledge",
+            "data": entities
+        })
+
+        return result
+
+    def _handle_query_memory(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """메모리 검색 처리"""
+        if not self.memory:
+            return {
+                "success": False,
+                "message": "메모리 기능이 활성화되지 않았습니다."
+            }
+
+        query = entities.get("query")
+        memory_type = entities.get("type")
+
+        if not query:
+            return {
+                "success": False,
+                "message": "검색어를 알 수 없습니다."
+            }
+
+        result = self.memory.process({
+            "action": "query_memory",
+            "data": {"query": query, "type": memory_type}
+        })
+
+        if not result.get("success"):
+            return result
+
+        # 검색 결과를 사용자 친화적으로 포맷팅
+        results = result.get("results", {})
+        message_parts = [f"'{query}' 검색 결과:"]
+
+        # 사람
+        people = results.get("people", [])
+        if people:
+            message_parts.append(f"\n사람 ({len(people)}명):")
+            for person in people[:3]:  # 상위 3명
+                name = person.get("name")
+                rel = person.get("relationship_type", "")
+                notes = person.get("personality_notes", "")[:50]
+                message_parts.append(f"  - {name} ({rel}): {notes}")
+
+        # 지식
+        knowledge = results.get("knowledge", [])
+        if knowledge:
+            message_parts.append(f"\n지식 ({len(knowledge)}개):")
+            for item in knowledge[:3]:
+                title = item.get("title")
+                content = item.get("content", "")
+                message_parts.append(f"  - {title}: {content}")
+
+        # 상호작용
+        interactions = results.get("interactions", [])
+        if interactions:
+            message_parts.append(f"\n상호작용 ({len(interactions)}건):")
+            for interaction in interactions[:3]:
+                person = interaction.get("person_name")
+                date = interaction.get("date")
+                summary = interaction.get("summary", "")
+                message_parts.append(f"  - {date} {person}: {summary}")
+
+        # 회고
+        reflections = results.get("reflections", [])
+        if reflections:
+            message_parts.append(f"\n회고 ({len(reflections)}건):")
+            for reflection in reflections[:3]:
+                date = reflection.get("date")
+                topic = reflection.get("topic", "")
+                message_parts.append(f"  - {date} {topic}")
+
+        if not (people or knowledge or interactions or reflections):
+            message_parts.append("\n검색 결과가 없습니다.")
+
+        return {
+            "success": True,
+            "message": "\n".join(message_parts)
+        }
+
+    def _handle_reflect(self, entities: Dict[str, Any]) -> Dict[str, Any]:
+        """회고 기록 처리"""
+        if not self.memory:
+            return {
+                "success": False,
+                "message": "메모리 기능이 활성화되지 않았습니다."
+            }
+
+        result = self.memory.process({
+            "action": "store_reflection",
+            "data": entities
+        })
+
+        return result

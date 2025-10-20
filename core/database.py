@@ -141,15 +141,94 @@ class Database:
             )
         """)
 
+        # === Phase 5A: Personal Memory System ===
+
+        # 9. 인물 정보 (People)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS people (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                relationship_type TEXT,
+                first_met_date DATE,
+                tags TEXT,
+                personality_notes TEXT,
+                contact_info TEXT,
+                importance_score INTEGER DEFAULT 5 CHECK(importance_score BETWEEN 1 AND 10),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 10. 상호작용 로그 (Interactions)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                person_id INTEGER NOT NULL,
+                date DATE NOT NULL,
+                type TEXT CHECK(type IN ('meeting', 'call', 'message', 'other')),
+                summary TEXT,
+                sentiment TEXT CHECK(sentiment IN ('positive', 'neutral', 'negative')),
+                topics TEXT,
+                location TEXT,
+                duration_min INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+            )
+        """)
+
+        # 11. 지식 저장소 (Knowledge Entries)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS knowledge_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                source TEXT,
+                category TEXT,
+                tags TEXT,
+                learned_date DATE NOT NULL,
+                confidence INTEGER DEFAULT 3 CHECK(confidence BETWEEN 1 AND 5),
+                last_reviewed DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 12. 회고/성찰 (Reflections)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reflections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL,
+                topic TEXT,
+                content TEXT NOT NULL,
+                mood TEXT,
+                insights TEXT,
+                related_events TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 13. 대화 메모리 (Conversation Memory)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS conversation_memory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+                content TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                context TEXT
+            )
+        """)
+
         # 인덱스 생성
         self._create_indexes(cursor)
 
         self.conn.commit()
-        print("✓ 데이터베이스 스키마 초기화 완료 (8개 테이블)")
+        print("✓ 데이터베이스 스키마 초기화 완료 (13개 테이블)")
 
     def _create_indexes(self, cursor):
         """성능 최적화를 위한 인덱스 생성"""
         indexes = [
+            # Existing indexes
             "CREATE INDEX IF NOT EXISTS idx_daily_health_date ON daily_health(date)",
             "CREATE INDEX IF NOT EXISTS idx_custom_metrics_date ON custom_metrics(date)",
             "CREATE INDEX IF NOT EXISTS idx_custom_metrics_name ON custom_metrics(metric_name)",
@@ -162,6 +241,17 @@ class Database:
             "CREATE INDEX IF NOT EXISTS idx_exp_logs_action_type ON exp_logs(action_type)",
             "CREATE INDEX IF NOT EXISTS idx_learning_logs_date ON learning_logs(date)",
             "CREATE INDEX IF NOT EXISTS idx_learning_logs_category ON learning_logs(category)",
+            # Phase 5A indexes
+            "CREATE INDEX IF NOT EXISTS idx_people_name ON people(name)",
+            "CREATE INDEX IF NOT EXISTS idx_people_relationship_type ON people(relationship_type)",
+            "CREATE INDEX IF NOT EXISTS idx_interactions_person_id ON interactions(person_id)",
+            "CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date)",
+            "CREATE INDEX IF NOT EXISTS idx_interactions_type ON interactions(type)",
+            "CREATE INDEX IF NOT EXISTS idx_knowledge_entries_category ON knowledge_entries(category)",
+            "CREATE INDEX IF NOT EXISTS idx_knowledge_entries_learned_date ON knowledge_entries(learned_date)",
+            "CREATE INDEX IF NOT EXISTS idx_reflections_date ON reflections(date)",
+            "CREATE INDEX IF NOT EXISTS idx_conversation_memory_session_id ON conversation_memory(session_id)",
+            "CREATE INDEX IF NOT EXISTS idx_conversation_memory_timestamp ON conversation_memory(timestamp)",
         ]
 
         for index_sql in indexes:
@@ -189,8 +279,12 @@ class Database:
 
         cursor = self.conn.cursor()
 
-        # 모든 테이블 삭제
+        # 모든 테이블 삭제 (역순으로, 외래키 때문에)
         tables = [
+            # Phase 5A tables
+            "conversation_memory", "reflections", "knowledge_entries",
+            "interactions", "people",
+            # Original tables
             "learning_logs", "exp_logs", "user_progress",
             "tasks", "habit_logs", "habits", "custom_metrics", "daily_health"
         ]

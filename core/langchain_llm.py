@@ -71,6 +71,11 @@ class LangChainLLM:
 - task_complete: 할일 완료
 - study: 공부/학습 (시간 기록)
 - learning_log: 학습 기록 (새로운 지식/스킬 습득)
+- remember_person: 사람 정보 기억 (이름, 관계, 특성)
+- remember_interaction: 상호작용 기록 (만남, 통화, 대화)
+- remember_knowledge: 지식 저장 (배운 것, 개념, 정보)
+- query_memory: 메모리 검색 ("X에 대해 뭐 알고 있어?")
+- reflect: 회고/성찰 기록
 - summary: 요약
 - progress: 진행도
 - chat: 일반 대화
@@ -79,12 +84,17 @@ class LangChainLLM:
 
 예시:
 - "새벽3시부터 12시까지 잤어" → {{"intent": "sleep", "entities": {{"sleep_hours": 9}}, "confidence": 0.95}}
+- "오후 3시부터 지금까지 공부중" (현재 18시) → {{"intent": "study", "entities": {{"study_hours": 3}}, "confidence": 0.95}}
 - "어제 7시간 자고 30분 운동했어" → [
     {{"intent": "sleep", "entities": {{"sleep_hours": 7, "date": "어제"}}, "confidence": 0.95}},
     {{"intent": "workout", "entities": {{"workout_minutes": 30, "date": "어제"}}, "confidence": 0.95}}
   ]
 - "프롬포트 템플릿과 chrome mcp에 대해 알게됐어" → {{"intent": "learning_log", "entities": {{"title": "프롬포트 템플릿과 chrome mcp", "content": "프롬포트 템플릿과 chrome mcp에 대해 학습함"}}, "confidence": 0.95}}
 - "내일 일본여행갈때 짐 챙겨야해" → {{"intent": "task_add", "entities": {{"task_title": "짐 챙기기", "due": "내일"}}, "confidence": 0.95}}
+- "민수는 내 대학 친구야. 개발자고 커피를 좋아해" → {{"intent": "remember_person", "entities": {{"name": "민수", "relationship_type": "친구", "tags": ["개발자", "커피"], "personality_notes": "커피를 좋아함"}}, "confidence": 0.95}}
+- "어제 지수랑 카페에서 커피 마셨어" → {{"intent": "remember_interaction", "entities": {{"person_name": "지수", "type": "meeting", "date": "어제", "summary": "카페에서 커피", "location": "카페"}}, "confidence": 0.95}}
+- "React의 useEffect는 사이드 이펙트를 처리하는 훅이야" → {{"intent": "remember_knowledge", "entities": {{"title": "React useEffect", "content": "사이드 이펙트를 처리하는 훅", "category": "프로그래밍"}}, "confidence": 0.95}}
+- "민수에 대해 뭐 알고 있어?" → {{"intent": "query_memory", "entities": {{"query": "민수", "type": "people"}}, "confidence": 0.95}}
 
 불확실한 정보: confidence 값 조정 (0.5 이하 시 불확실 명시)
 
@@ -97,12 +107,27 @@ entities 키 이름 규칙:
 - weight: "weight_kg"
 - study: "study_hours" 또는 "study_minutes"
 - learning_log: "title", "content"
+- remember_person: "name" (required), "relationship_type", "tags", "personality_notes"
+- remember_interaction: "person_name" (required), "type", "date", "summary", "sentiment", "location"
+- remember_knowledge: "title" (required), "content" (required), "category", "source"
+- query_memory: "query" (required), "type" (optional: "people"/"knowledge"/"interactions")
+- reflect: "content" (required), "topic", "mood"
 
 응답 형식: 순수 JSON만. 설명, 이모지, 주석 제거."""
 
-        user_prompt = f"""사용자 입력: "{user_input}"
+        # 현재 시간 정보 추가
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        current_hour = datetime.now().hour
+
+        user_prompt = f"""현재 시간: {current_time} (오후 {current_hour}시)
+
+사용자 입력: "{user_input}"
 
 이 입력을 분석하여 JSON으로 응답하세요.
+**중요**: "지금", "현재", "지금까지"와 같은 표현은 위의 현재 시간을 기준으로 정확하게 계산하세요.
+예: "오후 3시부터 지금까지" (현재 오후 6시) → 3시간 (6 - 3 = 3)
+
 복합 명령이면 배열, 단일 명령이면 객체로 응답하세요."""
 
         try:

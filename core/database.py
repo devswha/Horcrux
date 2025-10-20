@@ -1,27 +1,67 @@
 """
 데이터베이스 스키마 정의 및 초기화
-7개 테이블: daily_health, custom_metrics, habits, habit_logs, tasks,
-            user_progress, exp_logs
+13개 테이블: daily_health, custom_metrics, habits, habit_logs, tasks,
+            learning_logs, people, interactions, knowledge_entries,
+            reflections, conversation_memory, user_progress, exp_logs
+
+지원 DB:
+- SQLite (로컬 개발)
+- PostgreSQL (Supabase/Cloud 배포)
 """
 import sqlite3
+import os
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+
+# PostgreSQL 지원
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 
 class Database:
-    """SQLite 데이터베이스 관리 클래스"""
+    """SQLite/PostgreSQL 데이터베이스 관리 클래스"""
 
     def __init__(self, db_path: str = "horcrux.db"):
         self.db_path = db_path
-        self.conn: Optional[sqlite3.Connection] = None
+        self.conn: Optional[Union[sqlite3.Connection, 'psycopg2.connection']] = None
+        self.db_type = None  # 'sqlite' or 'postgres'
 
-    def connect(self) -> sqlite3.Connection:
-        """데이터베이스 연결"""
+    def connect(self) -> Union[sqlite3.Connection, 'psycopg2.connection']:
+        """데이터베이스 연결 (환경에 따라 SQLite 또는 PostgreSQL)"""
+        # Supabase 환경 변수 체크
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
+
+        if supabase_url and supabase_key and POSTGRES_AVAILABLE:
+            # PostgreSQL (Supabase) 연결
+            try:
+                # Supabase URL 형식: postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
+                self.conn = psycopg2.connect(
+                    supabase_url,
+                    cursor_factory=RealDictCursor
+                )
+                self.db_type = 'postgres'
+                print("✓ PostgreSQL (Supabase) 연결 성공")
+            except Exception as e:
+                print(f"⚠ PostgreSQL 연결 실패, SQLite로 fallback: {e}")
+                self._connect_sqlite()
+        else:
+            # SQLite 연결 (로컬 개발)
+            self._connect_sqlite()
+
+        return self.conn
+
+    def _connect_sqlite(self):
+        """SQLite 연결"""
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        return self.conn
+        self.db_type = 'sqlite'
 
     def close(self):
         """데이터베이스 연결 종료"""
@@ -36,10 +76,18 @@ class Database:
 
         cursor = self.conn.cursor()
 
+        # SQL 문법 선택 (SQLite vs PostgreSQL)
+        if self.db_type == 'postgres':
+            serial = "SERIAL PRIMARY KEY"
+            autoincrement = ""
+        else:
+            serial = "INTEGER PRIMARY KEY AUTOINCREMENT"
+            autoincrement = ""
+
         # 1. 일일 건강 메트릭 (핵심 지표)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS daily_health (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 date DATE NOT NULL UNIQUE,
                 sleep_h REAL,
                 workout_min INTEGER,
@@ -51,9 +99,9 @@ class Database:
         """)
 
         # 2. 커스텀 메트릭 (BMI, 혈압 등)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS custom_metrics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 date DATE NOT NULL,
                 metric_name TEXT NOT NULL,
                 value REAL NOT NULL,
@@ -65,9 +113,9 @@ class Database:
         """)
 
         # 3. 습관 정의
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS habits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 name TEXT NOT NULL UNIQUE,
                 goal_type TEXT,
                 target_value REAL,
@@ -76,9 +124,9 @@ class Database:
         """)
 
         # 4. 습관 추적 로그
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS habit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 habit_id INTEGER NOT NULL,
                 date DATE NOT NULL,
                 status TEXT CHECK(status IN ('success', 'fail', 'skip')),
@@ -91,9 +139,9 @@ class Database:
         """)
 
         # 5. 할일
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 title TEXT NOT NULL,
                 due DATE,
                 status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'in_progress', 'done')),
@@ -106,9 +154,9 @@ class Database:
         """)
 
         # 6. 사용자 진행도 (레벨/경험치)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS user_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 level INTEGER DEFAULT 1,
                 current_exp INTEGER DEFAULT 0,
                 total_exp INTEGER DEFAULT 0,
@@ -117,9 +165,9 @@ class Database:
         """)
 
         # 7. 경험치 획득 로그
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS exp_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 date DATE NOT NULL,
                 action_type TEXT NOT NULL,
                 exp_gained INTEGER NOT NULL,
@@ -129,9 +177,9 @@ class Database:
         """)
 
         # 8. 학습 기록 (Learning Logs)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS learning_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 date DATE NOT NULL,
                 title TEXT NOT NULL,
                 content TEXT,
@@ -144,9 +192,9 @@ class Database:
         # === Phase 5A: Personal Memory System ===
 
         # 9. 인물 정보 (People)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS people (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 name TEXT NOT NULL UNIQUE,
                 relationship_type TEXT,
                 first_met_date DATE,
@@ -160,9 +208,9 @@ class Database:
         """)
 
         # 10. 상호작용 로그 (Interactions)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS interactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 person_id INTEGER NOT NULL,
                 date DATE NOT NULL,
                 type TEXT CHECK(type IN ('meeting', 'call', 'message', 'other')),
@@ -177,9 +225,9 @@ class Database:
         """)
 
         # 11. 지식 저장소 (Knowledge Entries)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS knowledge_entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
                 source TEXT,
@@ -194,9 +242,9 @@ class Database:
         """)
 
         # 12. 회고/성찰 (Reflections)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS reflections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 date DATE NOT NULL,
                 topic TEXT,
                 content TEXT NOT NULL,
@@ -208,9 +256,9 @@ class Database:
         """)
 
         # 13. 대화 메모리 (Conversation Memory)
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS conversation_memory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {serial},
                 session_id TEXT NOT NULL,
                 role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
                 content TEXT NOT NULL,

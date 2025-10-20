@@ -127,26 +127,51 @@ Return to user
 
 ### Database Schema
 
-**12 tables in SQLite** (`horcrux.db`):
+**13 tables** - supports both SQLite (local) and PostgreSQL (cloud):
+
+**Core Tables**:
 - `daily_health`: Core health metrics (sleep_h, workout_min, protein_g, weight_kg)
 - `custom_metrics`: Flexible metrics (study hours, etc.)
 - `habits` / `habit_logs`: Habit tracking with streak counts
 - `tasks`: Task management with status/priority
-- `people`: Personal relationships and contacts (Phase 5A)
-- `interactions`: Interaction logs with people (Phase 5A)
-- `knowledge_entries`: Knowledge repository (Phase 5A)
+- `user_progress`, `exp_logs`: Level/XP tracking (legacy support)
+
+**Phase 5A Memory Tables**:
+- `people`: Personal relationships and contacts
+- `interactions`: Interaction logs with people
+- `knowledge_entries`: Knowledge repository
 - `learning_logs`: Learning content tracking
-- `reflections`: Daily/weekly reflections (Phase 5A)
+- `reflections`: Daily/weekly reflections
 - `conversation_memory`: Chat history
 
-**Removed** (no longer needed):
-- ❌ `user_progress`, `exp_logs`, `achievements`, `achievement_logs` (gamification removed)
+**Database Support**:
+- **SQLite** (`horcrux.db`): Local development, auto-created
+- **PostgreSQL** (Supabase): Cloud deployment (Streamlit Cloud)
+  - Auto-switches based on `SUPABASE_URL` environment variable
+  - See `SUPABASE_SETUP.md` for deployment guide
+
+**Schema Compatibility**:
+- `core/database.py` automatically adapts SQL syntax:
+  - SQLite: `INTEGER PRIMARY KEY AUTOINCREMENT`
+  - PostgreSQL: `SERIAL PRIMARY KEY`
 
 ### Configuration
 
 **Environment variables (.env):**
 - `OPENAI_API_KEY`: **Required** for SimpleLLM (GPT-4o-mini)
-- Database: `horcrux.db` (SQLite, auto-created)
+- `SUPABASE_URL`: (Optional) PostgreSQL connection string for cloud deployment
+  - Format: `postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres`
+  - If not set, uses SQLite (`horcrux.db`)
+- `SUPABASE_KEY`: (Optional) Supabase anon/public key
+
+**Local Development**:
+- Uses SQLite (`horcrux.db`) by default
+- No Supabase config needed
+
+**Cloud Deployment** (Streamlit Cloud):
+- Set `SUPABASE_URL` and `SUPABASE_KEY` in Streamlit secrets
+- Database auto-switches to PostgreSQL
+- See `SUPABASE_SETUP.md` for step-by-step guide
 
 ## Development Guidelines
 
@@ -240,8 +265,14 @@ Current Phases 1-4 focus on health/task management. **Phase 5+ will transform Ho
    - 100% LLM-driven (parsing + responses)
    - Fixed time calculation bugs
    - Natural Korean responses
+   - **Precision Mode** applied (logical, factual responses only)
+✅ **Phase 7**: **Cloud Deployment & Database Flexibility** (2025-10-20)
+   - Database adapter: SQLite (local) + PostgreSQL (cloud)
+   - Supabase integration for Streamlit Cloud deployment
+   - Persistent data storage on cloud
+   - Auto-switching based on environment
 
-**Current state**: SimpleLLM system fully operational. Streamlit web dashboard working.
+**Current state**: SimpleLLM system fully operational. Streamlit web dashboard working locally and deployable to cloud with Supabase.
 
 ## Phase 5 Roadmap: Personal Knowledge & Memory System
 

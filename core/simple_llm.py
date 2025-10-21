@@ -26,6 +26,12 @@ class SimpleLLM:
     def __init__(self, db_conn: sqlite3.Connection):
         self.conn = db_conn
 
+        # 데이터베이스 타입 감지
+        self.db_type = 'postgres' if os.getenv("SUPABASE_URL") else 'sqlite'
+
+        # SQL placeholder 설정 (SQLite: ?, PostgreSQL: %s)
+        self.placeholder = '%s' if self.db_type == 'postgres' else '?'
+
         # OpenAI API 키 확인
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -42,7 +48,7 @@ class SimpleLLM:
         try:
             db_wrapper = Database()
             db_wrapper.conn = db_conn
-            db_wrapper.db_type = 'postgres' if os.getenv("SUPABASE_URL") else 'sqlite'
+            db_wrapper.db_type = self.db_type
             self.rag = RAGManager(db_wrapper)
         except Exception as e:
             print(f"⚠️  RAG 초기화 실패: {e}")
@@ -411,9 +417,9 @@ class SimpleLLM:
             return {"success": False, "error": "할일 제목이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT id FROM tasks
-            WHERE title LIKE ? AND status = 'pending'
+            WHERE title LIKE {self.placeholder} AND status = 'pending'
             LIMIT 1
         """, (f"%{title}%",))
 
@@ -421,11 +427,13 @@ class SimpleLLM:
         if not task:
             return {"success": False, "error": f"'{title}' 할일을 찾을 수 없습니다"}
 
-        cursor.execute("""
+        task_id = task["id"] if self.db_type == 'postgres' else task[0]
+
+        cursor.execute(f"""
             UPDATE tasks
             SET status = 'done', completed_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (task[0],))
+            WHERE id = {self.placeholder}
+        """, (task_id,))
         self.conn.commit()
 
         return {
@@ -498,19 +506,23 @@ class SimpleLLM:
         cursor = self.conn.cursor()
 
         # 사람 ID 조회 또는 생성
-        cursor.execute("SELECT id FROM people WHERE name = ?", (person_name,))
+        cursor.execute(f"SELECT id FROM people WHERE name = {self.placeholder}", (person_name,))
         person = cursor.fetchone()
 
         if not person:
-            cursor.execute("INSERT INTO people (name) VALUES (?)", (person_name,))
-            person_id = cursor.lastrowid
+            cursor.execute(f"INSERT INTO people (name) VALUES ({self.placeholder})", (person_name,))
+            if self.db_type == 'postgres':
+                cursor.execute("SELECT lastval()")
+                person_id = cursor.fetchone()[0]
+            else:
+                person_id = cursor.lastrowid
         else:
-            person_id = person[0]
+            person_id = person["id"] if self.db_type == 'postgres' else person[0]
 
         # 상호작용 기록
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO interactions (person_id, date, type, summary)
-            VALUES (?, ?, ?, ?)
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, {self.placeholder})
         """, (person_id, date, interaction_type, summary))
         self.conn.commit()
 
@@ -573,35 +585,41 @@ class SimpleLLM:
 
         # 사람 검색
         if not memory_type or memory_type == "people":
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT name, relationship_type, personality_notes
                 FROM people
-                WHERE name LIKE ? OR personality_notes LIKE ?
+                WHERE name LIKE {self.placeholder} OR personality_notes LIKE {self.placeholder}
                 LIMIT 5
             """, (f"%{query}%", f"%{query}%"))
+
+            rows = cursor.fetchall()
             results["people"] = [
                 {
-                    "name": row[0],
-                    "relationship": row[1],
-                    "notes": row[2]
+                    "name": row["name"] if self.db_type == 'postgres' else row[0],
+                    "relationship": row["relationship_type"] if self.db_type == 'postgres' else row[1],
+                    "notes": row["personality_notes"] if self.db_type == 'postgres' else row[2]
                 }
-                for row in cursor.fetchall()
+                for row in rows
             ]
 
         # 지식 검색
         if not memory_type or memory_type == "knowledge":
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT title, content
                 FROM knowledge_entries
-                WHERE title LIKE ? OR content LIKE ?
+                WHERE title LIKE {self.placeholder} OR content LIKE {self.placeholder}
                 LIMIT 5
             """, (f"%{query}%", f"%{query}%"))
+
+            rows = cursor.fetchall()
             results["knowledge"] = [
                 {
-                    "title": row[0],
-                    "content": row[1][:100] + "..." if len(row[1]) > 100 else row[1]
+                    "title": row["title"] if self.db_type == 'postgres' else row[0],
+                    "content": (row["content"] if self.db_type == 'postgres' else row[1])[:100] + "..."
+                              if len(row["content"] if self.db_type == 'postgres' else row[1]) > 100
+                              else (row["content"] if self.db_type == 'postgres' else row[1])
                 }
-                for row in cursor.fetchall()
+                for row in rows
             ]
 
         return {

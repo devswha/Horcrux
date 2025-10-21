@@ -282,9 +282,9 @@ class SimpleLLM:
             return {"success": False, "error": "수면 시간이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO daily_health (date, sleep_h)
-            VALUES (?, ?)
+            VALUES ({self.placeholder}, {self.placeholder})
             ON CONFLICT(date) DO UPDATE SET sleep_h = excluded.sleep_h
         """, (date, hours))
         self.conn.commit()
@@ -304,9 +304,9 @@ class SimpleLLM:
             return {"success": False, "error": "운동 시간이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO daily_health (date, workout_min)
-            VALUES (?, ?)
+            VALUES ({self.placeholder}, {self.placeholder})
             ON CONFLICT(date) DO UPDATE SET workout_min = excluded.workout_min
         """, (date, minutes))
         self.conn.commit()
@@ -326,9 +326,9 @@ class SimpleLLM:
             return {"success": False, "error": "공부 시간이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO custom_metrics (date, metric_name, value, unit, category)
-            VALUES (?, 'study', ?, 'hours', 'learning')
+            VALUES ({self.placeholder}, 'study', {self.placeholder}, 'hours', 'learning')
         """, (date, hours))
         self.conn.commit()
 
@@ -347,9 +347,9 @@ class SimpleLLM:
             return {"success": False, "error": "단백질 양이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO daily_health (date, protein_g)
-            VALUES (?, ?)
+            VALUES ({self.placeholder}, {self.placeholder})
             ON CONFLICT(date) DO UPDATE SET protein_g = excluded.protein_g
         """, (date, grams))
         self.conn.commit()
@@ -369,9 +369,9 @@ class SimpleLLM:
             return {"success": False, "error": "체중이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO daily_health (date, weight_kg)
-            VALUES (?, ?)
+            VALUES ({self.placeholder}, {self.placeholder})
             ON CONFLICT(date) DO UPDATE SET weight_kg = excluded.weight_kg
         """, (date, kg))
         self.conn.commit()
@@ -397,9 +397,9 @@ class SimpleLLM:
             priority = "normal"  # 유효하지 않으면 기본값
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO tasks (title, due, priority, status)
-            VALUES (?, ?, ?, 'pending')
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, 'pending')
         """, (title, due_date, priority))
         self.conn.commit()
 
@@ -453,9 +453,9 @@ class SimpleLLM:
             return {"success": False, "error": "학습 제목이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO learning_logs (date, title, content, category)
-            VALUES (?, ?, ?, ?)
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, {self.placeholder})
         """, (date, title, content, category))
         self.conn.commit()
 
@@ -476,9 +476,9 @@ class SimpleLLM:
             return {"success": False, "error": "이름이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO people (name, relationship_type, tags, personality_notes)
-            VALUES (?, ?, ?, ?)
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, {self.placeholder})
             ON CONFLICT(name) DO UPDATE SET
                 relationship_type = excluded.relationship_type,
                 tags = excluded.tags,
@@ -543,9 +543,9 @@ class SimpleLLM:
             return {"success": False, "error": "제목과 내용이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO knowledge_entries (title, content, category, learned_date)
-            VALUES (?, ?, ?, ?)
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, {self.placeholder})
         """, (title, content, category, date))
         self.conn.commit()
 
@@ -639,9 +639,9 @@ class SimpleLLM:
             return {"success": False, "error": "회고 내용이 필요합니다"}
 
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             INSERT INTO reflections (date, topic, content, mood)
-            VALUES (?, ?, ?, ?)
+            VALUES ({self.placeholder}, {self.placeholder}, {self.placeholder}, {self.placeholder})
         """, (date, topic, content, mood))
         self.conn.commit()
 
@@ -658,23 +658,23 @@ class SimpleLLM:
         cursor = self.conn.cursor()
 
         # 건강 데이터
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT sleep_h, workout_min, protein_g, weight_kg
             FROM daily_health
-            WHERE date = ?
+            WHERE date = {self.placeholder}
         """, (date,))
         health = cursor.fetchone()
 
         # 할일
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COUNT(*) FROM tasks
-            WHERE status = 'done' AND date(completed_at) = ?
+            WHERE status = 'done' AND date(completed_at) = {self.placeholder}
         """, (date,))
         tasks_done = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COUNT(*) FROM tasks
-            WHERE date(created_at) = ?
+            WHERE date(created_at) = {self.placeholder}
         """, (date,))
         tasks_total = cursor.fetchone()[0]
 
